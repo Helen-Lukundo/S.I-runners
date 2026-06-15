@@ -1,44 +1,53 @@
 # S.I Runners
 
 A neon-cyberpunk endless runner that plays in any browser — touch on mobile, keyboard on desktop.
+Created by Sean MC.
 
 ## Play locally
 Just open `index.html` in a browser. That's it (it's one self-contained file).
+The version number shows in the bottom-right corner of the screen.
 
 ## Controls
 - **Desktop:** `SPACE` / `↑` to jump, `↓` to slide
 - **Mobile:** swipe up to jump, swipe down to slide (or use the on-screen buttons)
 
-## Push to GitHub
-```bash
-cd si-runners
-git init
-git add .
-git commit -m "S.I Runners v1 - playable core"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/si-runners.git
-git push -u origin main
-```
+## How to deploy an update
+The game is one file: `index.html`. To put a new version live, replace that file on your host.
 
-## Deploy on Render (free)
-1. Go to https://render.com → **New +** → **Static Site**
-2. Connect your GitHub repo (`si-runners`)
-3. Settings:
-   - **Build Command:** *(leave empty)*
-   - **Publish Directory:** `.`
-4. Click **Create Static Site**. Render gives you a public URL that updates every time you `git push`.
+### Render + GitHub
+1. On GitHub, open the `si-runners` folder, upload the new `index.html` over the old one.
+2. **Click the green "Commit changes" button at the bottom** (this is the step that saves it).
+3. Render rebuilds automatically. (Render's Publish Directory should be `si-runners`.)
+4. Confirm it worked: the repo shows one more commit, and the live site shows the new version number in the corner.
 
-## What's in v1
-- Running, jumping, sliding with gravity/physics
-- Three obstacle types: crystals (jump), barbed wire (slide under), drones (slide under)
-- Coin pickups, score, rising difficulty, saved high score
-- Parallax neon city, particles, sound effects, sound toggle
-- Fully responsive + works with touch and keyboard
+### Netlify (drag-and-drop, no commit step)
+1. Unzip the folder.
+2. Drag the `si-runners` folder onto https://app.netlify.com/drop
+3. To update later: log in → your site → Deploys → drag the new folder.
 
-## Roadmap (next features)
-- [ ] Character select (cyberteens + normal runners)
-- [ ] Weapons & combat (swords / guns / shields vs monsters)
-- [ ] Boosts: speed, shield, invisibility, strength, resurrection, amulets
+## What's in the game (v1.4)
+- Running, jumping, sliding with gravity/physics; rising difficulty
+- Obstacles: crystals (jump), barbed wire (slide under), drones (slide under)
+- Coins that bank across runs and are spent in the shop
+- **Name entry + how-to-play screen** before each run
+- **Shop** with selectable robot characters and buyable boosts
+- **Boosts:** Shield Module, Coin Magnet, Head Start
+- Detailed animated robot characters
+- Original phonk-style music + sound effects, with a mute toggle
+- Upgraded synthwave city background: starfield, glowing moon, layered skyline,
+  neon signs, horizon glow, and an outrun perspective grid
+- Saved high score, coins, owned characters/boosts (per device)
+- On-screen version tag (bottom-right)
+
+## Version history
+- v1.0 — core runner
+- v1.1 — name entry, instructions, "Created by Sean MC"
+- v1.2 — shop, detailed robots, boosts
+- v1.3 — music + version tag
+- v1.4 — upgraded synthwave background
+
+## Roadmap (ideas for next versions)
+- [ ] Background themes you can switch: day / doomsday (night is in now)
+- [ ] Weapons & combat (swords / guns vs monsters)
+- [ ] More boosts: invisibility, strength, resurrection, amulets
 - [ ] Chests with rewards
-- [ ] Background themes: day / doomsday (night is in now)
-- [ ] Phonk music tracks with mute

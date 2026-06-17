@@ -74,6 +74,10 @@
   .ssIcon { cursor: pointer; width: 66px; height: 66px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.45); background: rgba(10,4,30,0.62); color: #9fd9ff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: 0 0 18px rgba(80,40,200,0.25); }
   .ssIcon .ic { font-size: 22px; } .ssIcon .lb { font-size: 9px; letter-spacing: 1px; margin-top: 3px; }
   #startScreen #touchHint { position: absolute; bottom: 5.5vh; left: 0; right: 0; text-align: center; margin: 0; }
+  .ssCharBar { position: absolute; left: 0; right: 0; bottom: 23vh; display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .ssArrow { cursor: pointer; width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.5); background: rgba(10,4,30,0.6); color: #9fd9ff; font-size: 20px; box-shadow: 0 0 16px rgba(80,40,200,0.3); }
+  .ssArrow:active { transform: scale(0.92); }
+  .ssCharName { min-width: 150px; text-align: center; font-weight: 900; letter-spacing: 2px; font-size: clamp(16px,5vw,24px); color: #fff; text-shadow: 0 0 12px rgba(0,240,255,0.7); }
 </style>
 </head>
 <body>
@@ -94,6 +98,11 @@
     <div class="subtitle">3 &middot; D &middot; C Y B E R</div>
     <div id="byline">A GAME BY <b>SEAN MC</b></div>
 
+    <div class="ssCharBar">
+      <button class="ssArrow" id="charPrev">◀</button>
+      <div class="ssCharName" id="charName">VOID</div>
+      <button class="ssArrow" id="charNext">▶</button>
+    </div>
     <div class="ssBottom">
       <button class="ssIcon" id="shopBtn"><span class="ic">🛍</span><span class="lb">SHOP</span></button>
       <button class="ssPlay" id="startBtn">PLAY</button>
@@ -125,7 +134,7 @@
     </div>
   </div>
 
-  <div id="version">v3.4</div>
+  <div id="version">v3.5</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -144,6 +153,23 @@
       { id: "glitch",  name: "GLITCH",  cost: 800,  body: 0x062318, neon: 0x2effc2, accent: 0xff2e9a, scale: 0.90, acc: "antennae" },
       { id: "phantom", name: "PHANTOM", cost: 1300, body: 0x1c0a36, neon: 0xb14bff, accent: 0x00f0ff, scale: 1.16, acc: "jetpack" }
     ];
+
+    // ---- 50 extra unlockable characters (colour + gear variants) ----
+    (function () {
+      var PAL = [0xff3ea5,0x00f0ff,0xffd23e,0x2effc2,0xb14bff,0xff7a3e,0x3ea5ff,0xff2e6a,0x7bff5b,0xa0a8ff,0xff5ad0,0x5affc8,0xffe14d,0xff4d4d,0x4dffd2,0xc77bff,0x4dff8a,0xff8ad6,0x8ad6ff,0xd6ff8a];
+      var ACC = ["spikes","armor","halo","crown","antennae","jetpack","visor"];
+      var PRE = ["NEO","CY","HEX","RYU","ZE","VOX","KAI","AX","NYX","ORB","JET","RAI","DRA","MEK","SOL","LUN","TAO","VIR","ECH","ZAN","KEN","RIO","DUO","FEN","GLY","HALO"];
+      var SUF = ["BYTE","WAVE","CORE","FLUX","DASH","BOLT","ZERO","NOVA","RUSH","EDGE","PIX","JOLT","VOLT","RIFT","BLAZE","STORM","ARC","NEON","FANG","GHOST"];
+      for (var i = 0; i < 50; i++) {
+        var neon = PAL[i % PAL.length];
+        var nm = PRE[i % PRE.length] + SUF[(i * 3 + 1) % SUF.length];
+        CHARACTERS.push({
+          id: "rx" + i, name: nm, cost: 250 + i * 60,
+          body: 0x0a0818, neon: neon, accent: PAL[(i + 5) % PAL.length],
+          scale: 0.88 + (i % 6) * 0.05, acc: ACC[i % ACC.length]
+        });
+      }
+    })();
 
     // ---------- Boosts (buy once, then always active) ----------
     var BOOSTS = [
@@ -713,7 +739,21 @@
       $("shopBtn").addEventListener("click", openShop);
       $("overShopBtn").addEventListener("click", openShop);
       $("shopBackBtn").addEventListener("click", closeShop);
+      var cp = $("charPrev"), cn = $("charNext");
+      if (cp) cp.addEventListener("click", function () { cycleChar(-1); });
+      if (cn) cn.addEventListener("click", function () { cycleChar(1); });
+      updateCharName();
       window.addEventListener("resize", onResize);
+    }
+    function ownedChars() { return CHARACTERS.filter(function (c) { return save.owned.indexOf(c.id) >= 0; }); }
+    function updateCharName() { var el = document.getElementById("charName"); if (el) el.textContent = charById(save.selected).name; }
+    function cycleChar(dir) {
+      var list = ownedChars(); if (!list.length) return;
+      var idx = 0; for (var i = 0; i < list.length; i++) if (list[i].id === save.selected) idx = i;
+      idx = (idx + dir + list.length) % list.length;
+      save.selected = list[idx].id; writeSave();
+      applyCharacter(charById(save.selected));
+      updateCharName();
     }
     function move(dir) { lane = Math.max(0, Math.min(2, lane + dir)); targetX = LANES[lane]; }
     function jump() {
@@ -748,6 +788,7 @@
     function closeShop() {
       $("shopScreen").classList.add("hidden");
       $("startScreen").classList.remove("hidden");
+      updateCharName();
     }
     function hex(n) { return "#" + n.toString(16).padStart(6, "0"); }
     // full-body robot figure for shop cards
@@ -1025,7 +1066,7 @@
 (function () {
   var actx = null, master = null, comp = null, on = true, started = false;
   var step = 0, bar = 0, nextT = 0, timer = null, btn = null;
-  var BPM = 140, STEPS = 8, stepDur = 60 / BPM / 2;
+  var BPM = 150, STEPS = 8, stepDur = 60 / BPM / 2;
 
   function distCurve(k){ var n=2048,c=new Float32Array(n); for(var i=0;i<n;i++){var x=i*2/n-1; c[i]=(3+k)*x*20*Math.PI/180/(Math.PI+k*Math.abs(x));} return c; }
   var DIST=null;
@@ -1048,7 +1089,7 @@
     [C5,0,E5,G5,0,E5,0,D5],
     [0,D5,0,C5,A4,0,C5,E5]
   ];
-  var KICK=[1,0,0,1,0,0,1,0], SNARE=[0,0,0,0,1,0,0,0], HAT=[1,1,1,1,1,1,1,1];
+  var KICK=[1,0,1,1,0,1,1,0], SNARE=[0,0,0,0,1,0,0,1], HAT=[1,1,1,1,1,1,1,1];
 
   function schedule(){
     var ahead=0.2;
@@ -1064,7 +1105,7 @@
       if(i===STEPS-1) bar++;
     }
   }
-  function ensure(){ if(actx)return; var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; actx=new AC(); DIST=distCurve(8); comp=actx.createDynamicsCompressor(); master=actx.createGain(); master.gain.value=0.0001; master.connect(comp); comp.connect(actx.destination); }
+  function ensure(){ if(actx)return; var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; actx=new AC(); DIST=distCurve(16); comp=actx.createDynamicsCompressor(); master=actx.createGain(); master.gain.value=0.0001; master.connect(comp); comp.connect(actx.destination); }
   function start(){ ensure(); if(!actx)return; if(actx.state==="suspended")actx.resume(); if(!started){started=true; nextT=actx.currentTime+0.06; timer=setInterval(schedule,40);} master.gain.setTargetAtTime(on?0.45:0.0001, actx.currentTime, 0.3); }
   function toggle(){ on=!on; if(master)master.gain.setTargetAtTime(on?0.45:0.0001, actx.currentTime, 0.1); if(btn)btn.textContent=on?"🔊 phonk":"🔇 phonk"; }
 

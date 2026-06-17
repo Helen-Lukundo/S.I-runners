@@ -81,6 +81,13 @@
   .ssCharCol { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 180px; }
   .ssCharPower { font-size: clamp(11px,3.2vw,13px); letter-spacing: 1px; color: #ffe79a; text-shadow: 0 0 8px rgba(255,190,40,0.7); }
   .ssInfo { position: absolute; left: 50%; transform: translateX(-50%); bottom: 19vh; cursor: pointer; border: 1px solid rgba(0,240,255,0.45); background: rgba(10,4,30,0.6); color: #9fd9ff; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+  .ssCharPanel { position: absolute; left: 14px; bottom: 9vh; width: 232px; max-width: 62vw; background: rgba(8,4,24,0.62); border: 1px solid rgba(0,240,255,0.32); border-radius: 16px; padding: 12px 12px 14px; backdrop-filter: blur(3px); box-shadow: 0 0 22px rgba(80,40,200,0.25); text-align: left; }
+  .ssPanelTitle { font-size: 11px; letter-spacing: 3px; color: #7fb6e0; font-weight: 800; margin-bottom: 8px; }
+  .ssPanelHead { display: flex; align-items: center; gap: 8px; }
+  .ssCharPanel .ssArrow { width: 40px; height: 40px; font-size: 16px; flex: 0 0 auto; }
+  .ssCharPanel .ssCharName { flex: 1; min-width: 0; text-align: center; font-weight: 900; letter-spacing: 1px; font-size: clamp(15px,4.5vw,20px); color: #fff; text-shadow: 0 0 12px rgba(0,240,255,0.7); }
+  .ssCharPanel .ssCharPower { margin-top: 8px; text-align: center; }
+  .ssCharPanel .ssInfo { position: static; transform: none; left: auto; bottom: auto; display: block; width: 100%; margin-top: 10px; text-align: center; }
   .cornerBack { position: absolute; top: 14px; right: 14px; z-index: 12; cursor: pointer; border: 1px solid rgba(0,240,255,0.5); background: rgba(10,4,30,0.7); color: #bfeaff; border-radius: 22px; padding: 9px 16px; font-weight: 800; letter-spacing: 1px; font-size: 14px; box-shadow: 0 0 16px rgba(0,240,255,0.25); }
   .cornerBack:active { transform: scale(0.95); }
   #infoScreen .infoNote { max-width: 440px; margin-top: 10px; line-height: 1.55; color: #d6f7ff; font-size: clamp(13px,3.6vw,16px); }
@@ -109,15 +116,16 @@
     <div class="subtitle">3 &middot; D &middot; C Y B E R</div>
     <div id="byline">A GAME BY <b>SEAN MC</b></div>
 
-    <div class="ssCharBar">
-      <button class="ssArrow" id="charPrev">◀</button>
-      <div class="ssCharCol">
+    <div class="ssCharPanel">
+      <div class="ssPanelTitle">CHARACTER</div>
+      <div class="ssPanelHead">
+        <button class="ssArrow" id="charPrev">◀</button>
         <div class="ssCharName" id="charName">VOID</div>
-        <div class="ssCharPower" id="charPower"></div>
+        <button class="ssArrow" id="charNext">▶</button>
       </div>
-      <button class="ssArrow" id="charNext">▶</button>
+      <div class="ssCharPower" id="charPower"></div>
+      <button class="ssInfo" id="infoBtn">ⓘ&nbsp; POWERS — how they work</button>
     </div>
-    <button class="ssInfo" id="infoBtn">ⓘ&nbsp; POWERS — how they work</button>
     <div class="ssBottom">
       <button class="ssIcon" id="shopBtn"><span class="ic">🛍</span><span class="lb">SHOP</span></button>
       <button class="ssPlay" id="startBtn">PLAY</button>
@@ -165,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v3.8</div>
+  <div id="version">v3.9</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -288,8 +296,8 @@
       loadSave();
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a0f18);
-      scene.fog = new THREE.Fog(0x0d1420, 35, 125);
+      scene.background = new THREE.Color(0x070b14);
+      scene.fog = new THREE.Fog(0x0b1322, 28, 150);
 
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 400);
       camera.position.set(0, 6.2, 11);
@@ -298,11 +306,15 @@
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
+      if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+      if (THREE.ACESFilmicToneMapping) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2; }
       $("game").appendChild(renderer.domElement);
 
-      scene.add(new THREE.AmbientLight(0x6a7a9a, 0.85));
-      var key = new THREE.DirectionalLight(0xbfd0ff, 0.85); key.position.set(-8, 18, 6); scene.add(key);
-      var rim = new THREE.DirectionalLight(0xffd9a8, 0.6); rim.position.set(8, 12, -10); scene.add(rim);
+      // realistic night lighting: cool sky + warm fill + moon key
+      scene.add(new THREE.HemisphereLight(0x35435e, 0x05070c, 0.75));
+      scene.add(new THREE.AmbientLight(0x1e2a40, 0.45));
+      var key = new THREE.DirectionalLight(0xbcd2ff, 1.05); key.position.set(-22, 40, -28); scene.add(key);
+      var rim = new THREE.DirectionalLight(0xffc89a, 0.4); rim.position.set(12, 14, 12); scene.add(rim);
 
       buildWorld();
       // player is a positioning group; visual (model or fallback) goes inside it
@@ -335,7 +347,30 @@
 
     // ---------- World ----------
     function buildWorld() {
-      var roadMat = new THREE.MeshStandardMaterial({ color: 0x14181f, metalness: 0.5, roughness: 0.5 });
+      // ---- gradient night-sky dome ----
+      var skyC = document.createElement("canvas"); skyC.width = 4; skyC.height = 256;
+      var sg = skyC.getContext("2d"); var grd = sg.createLinearGradient(0, 0, 0, 256);
+      grd.addColorStop(0.0, "#1b2a44");   // horizon glow (bottom of sphere UV)
+      grd.addColorStop(0.45, "#0c1426");
+      grd.addColorStop(1.0, "#04060e");    // deep top
+      sg.fillStyle = grd; sg.fillRect(0, 0, 4, 256);
+      var skyTex = new THREE.CanvasTexture(skyC);
+      var sky = new THREE.Mesh(new THREE.SphereGeometry(320, 32, 16),
+        new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }));
+      scene.add(sky);
+
+      // ---- starfield ----
+      var N = 700, sp = new Float32Array(N * 3);
+      for (var si = 0; si < N; si++) {
+        var th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 300;
+        sp[si*3] = r * Math.sin(ph) * Math.cos(th);
+        sp[si*3+1] = Math.abs(r * Math.cos(ph)) * 0.75 + 25;
+        sp[si*3+2] = r * Math.sin(ph) * Math.sin(th);
+      }
+      var starGeo = new THREE.BufferGeometry(); starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 0.8, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9 })));
+
+      var roadMat = new THREE.MeshStandardMaterial({ color: 0x0a0d13, metalness: 0.75, roughness: 0.35 });
       var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();

@@ -99,10 +99,11 @@
     </div>
   </div>
 
-  <div id="version">v2.3</div>
+  <div id="version">v3.0</div>
   <div id="credit">Created by Sean MC</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
   (function () {
     "use strict";
@@ -146,7 +147,8 @@
 
     // ---------- State ----------
     var scene, camera, renderer, clock;
-    var player, playerLegL, playerLegR, playerArmL, playerArmR;
+    var player, playerVisual, playerLegL, playerLegR, playerArmL, playerArmR;
+    var modelProto = null, modelReady = false, mixer = null, runAction = null, usingModel = false;
     var roadTiles = [], buildings = [], obstacles = [], coins = [], flyingCars = [], gates = [];
     var lane = 1, targetX = 0, vy = 0, grounded = true, runT = 0;
     var speed = BASE_SPEED, distance = 0, coinCount = 0, score = 0;
@@ -175,12 +177,32 @@
       var rim = new THREE.DirectionalLight(0x33ffff, 0.8); rim.position.set(8, 12, -10); scene.add(rim);
 
       buildWorld();
-      buildPlayer(charById(save.selected));
+      // player is a positioning group; visual (model or fallback) goes inside it
+      player = new THREE.Group();
+      player.position.set(0, 0, 1);
+      scene.add(player);
+      applyCharacter(charById(save.selected));   // box fallback shows instantly
+      loadRobot();                                // real model swaps in when ready
       bindControls();
       refreshBankLabels();
 
       clock = new THREE.Clock();
       animate();
+    }
+
+    // ---------- Load the real 3D robot model ----------
+    function loadRobot() {
+      if (typeof THREE.GLTFLoader !== "function") { return; } // CDN blocked -> keep box robot
+      var url = "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/RobotExpressive/RobotExpressive.glb";
+      var loader = new THREE.GLTFLoader();
+      loader.load(url, function (gltf) {
+        modelProto = gltf;
+        modelReady = true;
+        applyCharacter(charById(save.selected)); // swap box -> real model
+      }, undefined, function (err) {
+        // load failed: silently keep the box fallback so the game still works
+        console.warn("Robot model failed to load, using fallback.", err);
+      });
     }
 
     // ---------- World ----------
@@ -327,13 +349,63 @@
       }
     }
 
-    // ---------- Player (detailed android, built from jointed parts) ----------
-    function buildPlayer(def) {
-      if (player) { scene.remove(player); }
+    // ---------- Player visual: real model if loaded, else box fallback ----------
+    function clearVisual() {
+      if (playerVisual) { player.remove(playerVisual); playerVisual = null; }
       playerLegL = playerLegR = playerArmL = playerArmR = null;
-      player = new THREE.Group();
+      if (mixer) { mixer.stopAllAction(); mixer = null; }
+      runAction = null; usingModel = false;
+    }
 
-      // metallic plating, dark base + neon emissive trim
+    function applyCharacter(def) {
+      clearVisual();
+      if (modelReady && modelProto) addModelRobot(def);
+      else buildBoxRobot(def);
+    }
+
+    // Real artist-made rigged robot (with built-in run animation)
+    function addModelRobot(def) {
+      var root = modelProto.scene;
+      root.position.set(0, 0, 0);
+      root.rotation.set(0, Math.PI, 0); // face down the track, away from camera
+
+      // scale so it stands ~3 units tall with feet on the ground
+      root.scale.setScalar(1);
+      root.updateMatrixWorld(true);
+      var bb = new THREE.Box3().setFromObject(root);
+      var size = new THREE.Vector3(); bb.getSize(size);
+      var s = 3.0 / (size.y || 1);
+      root.scale.setScalar(s);
+      root.updateMatrixWorld(true);
+      bb.setFromObject(root);
+      root.position.y -= bb.min.y;
+
+      // tint: keep the model's detail, give each character its own neon glow
+      root.traverse(function (o) {
+        if (o.isMesh && o.material) {
+          var mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach(function (m) {
+            if (m.emissive) { m.emissive.setHex(def.neon); m.emissiveIntensity = 0.5; }
+            m.metalness = 0.55; m.roughness = 0.45; m.needsUpdate = true;
+          });
+        }
+      });
+
+      var g = new THREE.Group(); g.add(root);
+      playerVisual = g; player.add(g);
+      usingModel = true;
+
+      // run animation
+      mixer = new THREE.AnimationMixer(root);
+      var clips = modelProto.animations || [];
+      var clip = THREE.AnimationClip.findByName(clips, "Running") ||
+                 THREE.AnimationClip.findByName(clips, "Walking") || clips[0];
+      if (clip) { runAction = mixer.clipAction(clip); runAction.play(); }
+    }
+
+    // ---------- Box fallback (used only if the model can't load) ----------
+    function buildBoxRobot(def) {
+      var g = new THREE.Group();
       var plate = new THREE.MeshStandardMaterial({ color: def.body, emissive: def.neon, emissiveIntensity: 0.18, metalness: 0.9, roughness: 0.3 });
       var dark  = new THREE.MeshStandardMaterial({ color: 0x0a0818, metalness: 0.85, roughness: 0.45 });
       var neon  = new THREE.MeshStandardMaterial({ color: def.neon, emissive: def.neon, emissiveIntensity: 1.0, metalness: 0.4, roughness: 0.2 });
@@ -343,64 +415,40 @@
       function cyl(rt,rb,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,16), m); }
       function ball(r,m){ return new THREE.Mesh(new THREE.SphereGeometry(r,16,16), m); }
 
-      // ---- pelvis ----
-      var pelvis = box(0.95, 0.45, 0.55, dark); pelvis.position.y = 1.32; player.add(pelvis);
-      var belt = box(1.0, 0.12, 0.6, neon); belt.position.y = 1.5; player.add(belt);
-
-      // ---- torso (tapered) ----
-      var torso = cyl(0.42, 0.58, 0.95, plate); torso.position.y = 2.0; player.add(torso);
-      var collar = cyl(0.34, 0.42, 0.18, dark); collar.position.y = 2.5; player.add(collar);
-      // chest reactor core
-      var core = ball(0.16, neon); core.position.set(0, 2.08, 0.46); player.add(core);
-      var coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 20), acc);
-      coreRing.position.set(0, 2.08, 0.45); player.add(coreRing);
-      // ab trim lines
-      [1.82, 1.66].forEach(function(y){ var t = box(0.5, 0.04, 0.05, acc); t.position.set(0, y, 0.5); player.add(t); });
-
-      // ---- shoulders ----
-      var shL = ball(0.26, plate); shL.position.set(-0.62, 2.42, 0); player.add(shL);
-      var shR = ball(0.26, plate); shR.position.set(0.62, 2.42, 0); player.add(shR);
-
-      // ---- neck + head (sleek mech helmet) ----
-      var neck = cyl(0.14, 0.16, 0.18, dark); neck.position.y = 2.66; player.add(neck);
-      // cranium: slightly elongated, angled back
-      var head = ball(0.32, plate); head.position.y = 2.96; head.scale.set(0.92, 1.1, 1.12); player.add(head);
-      // angular faceplate
-      var face = box(0.46, 0.42, 0.22, dark); face.position.set(0, 2.93, 0.22); player.add(face);
-      // glowing segmented eye-visor (3 segments)
-      [-0.14, 0, 0.14].forEach(function(x){
-        var eye = box(0.1, 0.1, 0.05, acc); eye.position.set(x, 2.98, 0.35); player.add(eye);
-      });
-      // brow bar
-      var brow = box(0.5, 0.05, 0.06, neon); brow.position.set(0, 3.06, 0.32); player.add(brow);
-      // mouth grille
-      var grille = box(0.26, 0.12, 0.05, dark); grille.position.set(0, 2.8, 0.34); player.add(grille);
-      // side audio units
+      var pelvis = box(0.95, 0.45, 0.55, dark); pelvis.position.y = 1.32; g.add(pelvis);
+      var belt = box(1.0, 0.12, 0.6, neon); belt.position.y = 1.5; g.add(belt);
+      var torso = cyl(0.42, 0.58, 0.95, plate); torso.position.y = 2.0; g.add(torso);
+      var collar = cyl(0.34, 0.42, 0.18, dark); collar.position.y = 2.5; g.add(collar);
+      var core = ball(0.16, neon); core.position.set(0, 2.08, 0.46); g.add(core);
+      var coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 20), acc); coreRing.position.set(0, 2.08, 0.45); g.add(coreRing);
+      [1.82, 1.66].forEach(function(y){ var t = box(0.5, 0.04, 0.05, acc); t.position.set(0, y, 0.5); g.add(t); });
+      var shL = ball(0.26, plate); shL.position.set(-0.62, 2.42, 0); g.add(shL);
+      var shR = ball(0.26, plate); shR.position.set(0.62, 2.42, 0); g.add(shR);
+      var neck = cyl(0.14, 0.16, 0.18, dark); neck.position.y = 2.66; g.add(neck);
+      var head = ball(0.32, plate); head.position.y = 2.96; head.scale.set(0.92, 1.1, 1.12); g.add(head);
+      var face = box(0.46, 0.42, 0.22, dark); face.position.set(0, 2.93, 0.22); g.add(face);
+      [-0.14, 0, 0.14].forEach(function(x){ var eye = box(0.1, 0.1, 0.05, acc); eye.position.set(x, 2.98, 0.35); g.add(eye); });
+      var brow = box(0.5, 0.05, 0.06, neon); brow.position.set(0, 3.06, 0.32); g.add(brow);
+      var grille = box(0.26, 0.12, 0.05, dark); grille.position.set(0, 2.8, 0.34); g.add(grille);
       [-0.32, 0.32].forEach(function(x){
-        var ear = cyl(0.09, 0.09, 0.12, dark); ear.rotation.z = Math.PI/2; ear.position.set(x, 2.95, 0); player.add(ear);
-        var earGlow = ball(0.05, neon); earGlow.position.set(x*1.18, 2.95, 0); player.add(earGlow);
+        var ear = cyl(0.09, 0.09, 0.12, dark); ear.rotation.z = Math.PI/2; ear.position.set(x, 2.95, 0); g.add(ear);
+        var earGlow = ball(0.05, neon); earGlow.position.set(x*1.18, 2.95, 0); g.add(earGlow);
       });
-      // top crest / fin
-      var crest = box(0.06, 0.26, 0.4, acc); crest.position.set(0, 3.2, -0.02); player.add(crest);
-      // antenna
-      var ant = cyl(0.02, 0.03, 0.34, dark); ant.position.set(0.22, 3.3, -0.05); player.add(ant);
-      var antTip = ball(0.05, neon); antTip.position.set(0.22, 3.48, -0.05); player.add(antTip);
-
-      // ---- back thruster pods ----
+      var crest = box(0.06, 0.26, 0.4, acc); crest.position.set(0, 3.2, -0.02); g.add(crest);
+      var ant = cyl(0.02, 0.03, 0.34, dark); ant.position.set(0.22, 3.3, -0.05); g.add(ant);
+      var antTip = ball(0.05, neon); antTip.position.set(0.22, 3.48, -0.05); g.add(antTip);
       [-0.3, 0.3].forEach(function(x){
-        var pod = cyl(0.1, 0.12, 0.4, dark); pod.position.set(x, 2.05, -0.42); player.add(pod);
-        var glow = ball(0.08, neon); glow.position.set(x, 1.84, -0.42); player.add(glow);
+        var pod = cyl(0.1, 0.12, 0.4, dark); pod.position.set(x, 2.05, -0.42); g.add(pod);
+        var glow = ball(0.08, neon); glow.position.set(x, 1.84, -0.42); g.add(glow);
       });
 
-      // ---- limbs (jointed) ----
       playerArmL = makeArm(plate, dark, neon); playerArmL.position.set(-0.62, 2.42, 0);
       playerArmR = makeArm(plate, dark, neon); playerArmR.position.set(0.62, 2.42, 0);
       playerLegL = makeLeg(plate, dark, neon); playerLegL.position.set(-0.26, 1.3, 0);
       playerLegR = makeLeg(plate, dark, neon); playerLegR.position.set(0.26, 1.3, 0);
-      player.add(playerArmL, playerArmR, playerLegL, playerLegR);
+      g.add(playerArmL, playerArmR, playerLegL, playerLegR);
 
-      player.position.set(0, 0, 1);
-      scene.add(player);
+      playerVisual = g; player.add(g);
     }
 
     function makeArm(plate, dark, neon) {
@@ -508,12 +556,12 @@
       save.owned.push(def.id);
       save.selected = def.id;
       writeSave();
-      buildPlayer(def);
+      applyCharacter(def);
       buildShopGrid(); refreshBankLabels();
     }
     function selectChar(id) {
       save.selected = id; writeSave();
-      buildPlayer(charById(id));
+      applyCharacter(charById(id));
       buildShopGrid();
     }
 
@@ -560,11 +608,16 @@
       vy -= GRAVITY * dt; player.position.y += vy * dt;
       if (player.position.y <= 0) { player.position.y = 0; vy = 0; grounded = true; }
 
-      var swing = grounded ? Math.sin(runT) * 0.7 : 0.3;
-      if (playerLegL) playerLegL.rotation.x = swing;
-      if (playerLegR) playerLegR.rotation.x = -swing;
-      if (playerArmL) playerArmL.rotation.x = -swing;
-      if (playerArmR) playerArmR.rotation.x = swing;
+      // real model plays its own rigged run animation; box fallback swings limbs
+      if (mixer) {
+        mixer.update(dt);
+      } else {
+        var swing = grounded ? Math.sin(runT) * 0.7 : 0.3;
+        if (playerLegL) playerLegL.rotation.x = swing;
+        if (playerLegR) playerLegR.rotation.x = -swing;
+        if (playerArmL) playerArmL.rotation.x = -swing;
+        if (playerArmR) playerArmR.rotation.x = swing;
+      }
       player.rotation.y = (targetX - player.position.x) * -0.25;
 
       roadTiles.forEach(function (t) { t.position.z += mv; if (t.position.z > SEG) t.position.z -= TRACK_LEN; });

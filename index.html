@@ -571,73 +571,91 @@
       playerVisual = g; player.add(g);
     }
 
-    // ---------- Original anime runner: monochrome, white hair, cracked white mask ----------
+    // ---------- Original anime runner: cel-shaded, white hair, cracked mask ----------
     function buildAnimeRunner(def) {
       var g = new THREE.Group();
-      var coat   = new THREE.MeshStandardMaterial({ color: 0x0c0c12, metalness: 0.2, roughness: 0.75 });
-      var coatHi = new THREE.MeshStandardMaterial({ color: 0x20202a, metalness: 0.2, roughness: 0.65 });
-      var skin   = new THREE.MeshStandardMaterial({ color: 0xececed, metalness: 0.0, roughness: 0.9 });
-      var white  = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.22, metalness: 0.0, roughness: 0.55 });
-      var hairMat= new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.0, roughness: 0.5 });
-      var crack  = new THREE.MeshStandardMaterial({ color: 0x101016, metalness: 0.0, roughness: 1.0 });
-      var glow   = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-      function box(w,h,d,m){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m); }
-      function cyl(rt,rb,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,16), m); }
-      function ball(r,m){ return new THREE.Mesh(new THREE.SphereGeometry(r,16,16), m); }
-      function cone(r,h,m){ return new THREE.Mesh(new THREE.ConeGeometry(r,h,6), m); }
+      // toon (cel) gradient so shading is flat & anime-like
+      var gc = document.createElement("canvas"); gc.width = 1; gc.height = 4;
+      var gx = gc.getContext("2d"); var st = ["#3c3c46", "#727282", "#bcbcc8", "#ffffff"];
+      for (var s = 0; s < 4; s++) { gx.fillStyle = st[s]; gx.fillRect(0, s, 1, 1); }
+      var grad = new THREE.CanvasTexture(gc); grad.minFilter = THREE.NearestFilter; grad.magFilter = THREE.NearestFilter; grad.generateMipmaps = false;
 
-      // body: long black high-collar coat
-      var pelvis = box(0.82, 0.45, 0.5, coat); pelvis.position.y = 1.32; g.add(pelvis);
-      var torso  = cyl(0.42, 0.56, 1.0, coat); torso.position.y = 2.0; g.add(torso);
-      var seam   = box(0.06, 0.95, 0.5, coatHi); seam.position.set(0, 2.0, 0.27); g.add(seam);
-      var belt   = box(0.86, 0.1, 0.54, coatHi); belt.position.y = 1.5; g.add(belt);
-      var collar = cyl(0.3, 0.46, 0.42, coat); collar.position.y = 2.62; g.add(collar);
-      var collarB= box(0.5, 0.5, 0.12, coat); collarB.position.set(0, 2.74, -0.22); g.add(collarB);
-      [-0.22, 0.22].forEach(function (x) { var tail = box(0.34, 0.95, 0.12, coat); tail.position.set(x, 1.18, -0.3); tail.rotation.x = 0.14; g.add(tail); });
-      var shL = ball(0.24, coat); shL.position.set(-0.6, 2.42, 0); g.add(shL);
-      var shR = ball(0.24, coat); shR.position.set(0.6, 2.42, 0); g.add(shR);
+      function toon(col) { return new THREE.MeshToonMaterial({ color: col, gradientMap: grad }); }
+      var coat = toon(0x101016), coatHi = toon(0x2a2a34), skin = toon(0xececed),
+          white = toon(0xffffff), hairMat = toon(0xf2f2f7), crackMat = toon(0x0a0a10);
+      var glow = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-      // pale head
-      var neck = cyl(0.12, 0.14, 0.18, skin); neck.position.y = 2.76; g.add(neck);
-      var head = ball(0.3, skin); head.position.y = 3.04; head.scale.set(0.95, 1.08, 1.0); g.add(head);
+      // ink outline: a slightly bigger black back-faced shell = anime line
+      function ink(mesh, k) {
+        var o = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide }));
+        o.scale.multiplyScalar(k || 1.07); o.userData.outline = true; mesh.add(o); return mesh;
+      }
+      function box(w, h, d, m) { return ink(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); }
+      function cyl(rt, rb, h, m) { return ink(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 16), m)); }
+      function ball(r, m) { return ink(new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), m)); }
+      function cone(r, h, m) { return ink(new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), m)); }
 
-      // cracked white mask over the face
-      var mask = box(0.38, 0.44, 0.12, white); mask.position.set(0, 3.04, 0.2); g.add(mask);
-      var c1 = box(0.025, 0.3, 0.02, crack);  c1.position.set(-0.05, 3.06, 0.27); c1.rotation.z =  0.28; g.add(c1);
-      var c2 = box(0.025, 0.18, 0.02, crack); c2.position.set(-0.01, 3.16, 0.27); c2.rotation.z = -0.7;  g.add(c2);
-      var c3 = box(0.025, 0.24, 0.02, crack); c3.position.set( 0.11, 2.99, 0.27); c3.rotation.z =  0.5;  g.add(c3);
-      var c4 = box(0.16, 0.025, 0.02, crack); c4.position.set( 0.0,  3.02, 0.27); g.add(c4);
-      // glowing eyes peeking through
-      var eyeL = box(0.11, 0.035, 0.02, glow); eyeL.position.set(-0.1, 3.07, 0.275); g.add(eyeL);
-      var eyeR = box(0.11, 0.035, 0.02, glow); eyeR.position.set( 0.1, 3.07, 0.275); g.add(eyeR);
+      // ---- body: slim black high-collar coat ----
+      var pelvis = box(0.66, 0.42, 0.44, coat); pelvis.position.y = 1.34; g.add(pelvis);
+      var torso = cyl(0.32, 0.46, 1.02, coat); torso.position.y = 2.02; g.add(torso);
+      var seam = box(0.05, 0.96, 0.46, coatHi); seam.position.set(0, 2.02, 0.24); g.add(seam);
+      var belt = box(0.7, 0.09, 0.48, coatHi); belt.position.y = 1.52; g.add(belt);
+      var collar = cyl(0.24, 0.4, 0.42, coat); collar.position.y = 2.64; g.add(collar);
+      var collarB = box(0.46, 0.5, 0.1, coat); collarB.position.set(0, 2.78, -0.2); g.add(collarB);
+      [-0.2, 0.2].forEach(function (x) { var tl = box(0.3, 1.0, 0.1, coat); tl.position.set(x, 1.12, -0.28); tl.rotation.x = 0.16; g.add(tl); });
+      var shL = ball(0.2, coat); shL.position.set(-0.52, 2.46, 0); g.add(shL);
+      var shR = ball(0.2, coat); shR.position.set(0.52, 2.46, 0); g.add(shR);
 
-      // spiky white hair
-      var cap = ball(0.28, hairMat); cap.position.set(0, 3.16, -0.04); cap.scale.set(1.0, 0.72, 1.0); g.add(cap);
-      var spikes = [
-        { x: 0.0,  y: 3.34, z: 0.04,  rx: -0.25, len: 0.52 },
-        { x:-0.16, y: 3.3,  z: 0.06,  rx: -0.1,  len: 0.44 },
-        { x: 0.16, y: 3.3,  z: 0.06,  rx: -0.1,  len: 0.44 },
-        { x:-0.1,  y: 3.32, z: -0.16, rx:  0.35, len: 0.48 },
-        { x: 0.1,  y: 3.32, z: -0.16, rx:  0.35, len: 0.48 },
-        { x: 0.0,  y: 3.3,  z: -0.24, rx:  0.6,  len: 0.42 },
-        { x:-0.25, y: 3.2,  z: -0.02, rx: -0.1,  len: 0.36 },
-        { x: 0.25, y: 3.2,  z: -0.02, rx: -0.1,  len: 0.36 }
-      ];
-      spikes.forEach(function (s) { var m = cone(0.09, s.len, hairMat); m.position.set(s.x, s.y, s.z); m.rotation.x = s.rx; g.add(m); });
+      // ---- pale head ----
+      var neck = cyl(0.11, 0.13, 0.18, skin); neck.position.y = 2.8; g.add(neck);
+      var head = ball(0.28, skin); head.position.y = 3.06; head.scale.set(0.96, 1.06, 0.98); g.add(head);
 
-      // limbs (black coat with white trim), wired so the run animation swings them
-      playerArmL = makeArm(coat, coatHi, white); playerArmL.position.set(-0.6, 2.42, 0);
-      playerArmR = makeArm(coat, coatHi, white); playerArmR.position.set(0.6, 2.42, 0);
-      playerLegL = makeLeg(coat, coatHi, white); playerLegL.position.set(-0.24, 1.3, 0);
-      playerLegR = makeLeg(coat, coatHi, white); playerLegR.position.set(0.24, 1.3, 0);
+      // ---- smooth rounded cracked white mask ----
+      var mask = ball(0.27, white); mask.scale.set(0.98, 1.05, 0.6); mask.position.set(0, 3.05, 0.08); g.add(mask);
+      var c1 = box(0.022, 0.26, 0.02, crackMat); c1.position.set(-0.06, 3.08, 0.27); c1.rotation.z = 0.3; g.add(c1);
+      var c2 = box(0.022, 0.15, 0.02, crackMat); c2.position.set(-0.02, 3.18, 0.27); c2.rotation.z = -0.7; g.add(c2);
+      var c3 = box(0.022, 0.2, 0.02, crackMat); c3.position.set(0.1, 3.0, 0.27); c3.rotation.z = 0.55; g.add(c3);
+      var eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.032, 0.02), glow); eyeL.position.set(-0.09, 3.08, 0.28); g.add(eyeL);
+      var eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.032, 0.02), glow); eyeR.position.set(0.09, 3.08, 0.28); g.add(eyeR);
+
+      // ---- swept-back white hair + fringe ----
+      var cap = ball(0.29, hairMat); cap.scale.set(1.04, 0.82, 1.04); cap.position.set(0, 3.16, -0.02); g.add(cap);
+      [{ x: 0, y: 3.3, z: -0.18, rx: 0.7, l: 0.66 },
+       { x: -0.18, y: 3.28, z: -0.14, rx: 0.6, l: 0.6 },
+       { x: 0.18, y: 3.28, z: -0.14, rx: 0.6, l: 0.6 },
+       { x: -0.3, y: 3.18, z: -0.06, rx: 0.4, l: 0.5 },
+       { x: 0.3, y: 3.18, z: -0.06, rx: 0.4, l: 0.5 }
+      ].forEach(function (h) { var sp = cone(0.1, h.l, hairMat); sp.position.set(h.x, h.y, h.z); sp.rotation.x = h.rx; g.add(sp); });
+      [{ x: -0.12, rx: -0.5 }, { x: 0.04, rx: -0.4 }, { x: 0.2, rx: -0.5 }].forEach(function (f) {
+        var fr = cone(0.08, 0.34, hairMat); fr.position.set(f.x, 3.24, 0.16); fr.rotation.x = f.rx; g.add(fr);
+      });
+
+      // ---- limbs (cel-shaded, outlined) ----
+      function armPart() {
+        var a = new THREE.Group();
+        var up = cyl(0.1, 0.085, 0.5, coat); up.position.y = -0.3; a.add(up);
+        var fr = cyl(0.085, 0.07, 0.46, coat); fr.position.y = -0.78; a.add(fr);
+        var hd = box(0.16, 0.18, 0.14, skin); hd.position.y = -1.04; a.add(hd);
+        return a;
+      }
+      function legPart() {
+        var l = new THREE.Group();
+        var th = cyl(0.13, 0.11, 0.56, coat); th.position.y = -0.32; l.add(th);
+        var sh = cyl(0.11, 0.09, 0.5, coat); sh.position.y = -0.9; l.add(sh);
+        var bt = box(0.2, 0.16, 0.42, coatHi); bt.position.set(0, -1.16, 0.08); l.add(bt);
+        return l;
+      }
+      playerArmL = armPart(); playerArmL.position.set(-0.52, 2.46, 0);
+      playerArmR = armPart(); playerArmR.position.set(0.52, 2.46, 0);
+      playerLegL = legPart(); playerLegL.position.set(-0.22, 1.28, 0);
+      playerLegR = legPart(); playerLegR.position.set(0.22, 1.28, 0);
       g.add(playerArmL, playerArmR, playerLegL, playerLegR);
 
       g.scale.setScalar(def.scale || 1);
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
     }
-
     function makeArm(plate, dark, neon) {
       var g = new THREE.Group(); // pivot at shoulder
       var upper = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.5, 12), plate); upper.position.y = -0.3; g.add(upper);

@@ -61,6 +61,19 @@
   #byline { margin-top: 14px; font-size: clamp(15px,4.5vw,22px); letter-spacing: 3px; color: #eaf6ff; }
   #byline b { background: linear-gradient(90deg,#ffd23e,#ff3ea5); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255,90,180,0.6)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+
+  /* Subway-Surfers-style start layout */
+  #startScreen { background: linear-gradient(180deg, rgba(5,1,15,0.6) 0%, rgba(5,1,15,0.12) 32%, rgba(5,1,15,0.12) 58%, rgba(5,1,15,0.82) 100%); backdrop-filter: none; justify-content: flex-start; }
+  #startScreen .title { margin-top: 7vh; }
+  .ssTop { position: absolute; top: 14px; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 16px; pointer-events: none; }
+  .ssCounter { background: rgba(10,4,30,0.62); border: 1px solid rgba(255,200,40,0.6); border-radius: 22px; padding: 8px 15px; font-weight: 800; letter-spacing: 1px; color: #ffe79a; text-shadow: 0 0 8px rgba(255,190,40,0.8); font-size: 16px; }
+  .ssCounter.best { border-color: rgba(0,240,255,0.55); color: #bfeaff; text-shadow: 0 0 8px rgba(0,240,255,0.7); }
+  .ssBottom { position: absolute; left: 0; right: 0; bottom: 12vh; display: flex; align-items: center; justify-content: center; gap: 20px; }
+  .ssPlay { cursor: pointer; border: none; border-radius: 50px; padding: 18px 56px; font-size: clamp(20px,6vw,30px); font-weight: 900; letter-spacing: 3px; color: #04010f; background: linear-gradient(90deg,#00f0ff,#7b5bff); box-shadow: 0 0 36px rgba(0,240,255,0.6); transition: transform .08s ease; }
+  .ssPlay:active { transform: scale(0.95); }
+  .ssIcon { cursor: pointer; width: 66px; height: 66px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.45); background: rgba(10,4,30,0.62); color: #9fd9ff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: 0 0 18px rgba(80,40,200,0.25); }
+  .ssIcon .ic { font-size: 22px; } .ssIcon .lb { font-size: 9px; letter-spacing: 1px; margin-top: 3px; }
+  #startScreen #touchHint { position: absolute; bottom: 5.5vh; left: 0; right: 0; text-align: center; margin: 0; }
 </style>
 </head>
 <body>
@@ -73,18 +86,20 @@
 
   <!-- Start -->
   <div id="startScreen" class="screen">
+    <div class="ssTop">
+      <div class="ssCounter best">★ <span id="startBest">0</span> m</div>
+      <div class="ssCounter">◎ <span id="bankPreview">0</span></div>
+    </div>
     <div class="title">S.I RUNNERS</div>
     <div class="subtitle">3 &middot; D &middot; C Y B E R</div>
     <div id="byline">A GAME BY <b>SEAN MC</b></div>
-    <div class="panel">
-      Dodge the neon city. Switch lanes, jump the barriers, grab the data-coins.<br><br>
-      <span class="key">◀ ▶ / A D</span> move &nbsp;&middot;&nbsp; <span class="key">▲ / W / Space</span> jump
-      <div id="touchHint">Phone: <b>swipe</b> left / right to move, <b>swipe up</b> to jump.</div>
+
+    <div class="ssBottom">
+      <button class="ssIcon" id="shopBtn"><span class="ic">🛍</span><span class="lb">SHOP</span></button>
+      <button class="ssPlay" id="startBtn">PLAY</button>
+      <button class="ssIcon" id="muteBtn"><span class="ic">🔊</span><span class="lb">SOUND</span></button>
     </div>
-    <div class="row">
-      <button class="btn" id="startBtn">START</button>
-      <button class="btn ghost" id="shopBtn">SHOP ◎ <span id="bankPreview">0</span></button>
-    </div>
+    <div id="touchHint">◀ ▶ / A D move &middot; ▲ jump &middot; swipe on phone</div>
   </div>
 
   <!-- Shop -->
@@ -110,7 +125,7 @@
     </div>
   </div>
 
-  <div id="version">v3.3</div>
+  <div id="version">v3.4</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -720,6 +735,7 @@
     function refreshBankLabels() {
       $("bankPreview").textContent = save.bank;
       $("shopBankVal").textContent = save.bank;
+      var sb = document.getElementById("startBest"); if (sb) sb.textContent = save.best;
     }
     function openShop() {
       buildShopGrid();
@@ -1057,6 +1073,8 @@
   window.addEventListener("keydown", function(e){ if(e.key==="m"||e.key==="M") toggle(); });
   window.addEventListener("load", function(){
     ["startBtn","retryBtn"].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener("click", start); });
+    var mb=document.getElementById("muteBtn");
+    if(mb) mb.addEventListener("click", function(e){ e.stopPropagation(); start(); toggle(); var ic=mb.querySelector(".ic"); if(ic) ic.textContent = on ? "🔊" : "🔇"; });
     btn=document.createElement("div"); btn.textContent="🔊 phonk";
     btn.style.cssText="position:fixed;left:10px;bottom:8px;z-index:9999;font:700 12px system-ui,sans-serif;color:#ffd84d;background:rgba(0,0,0,.45);border:1px solid #ffd84d;border-radius:20px;padding:5px 12px;cursor:pointer;letter-spacing:1px;text-shadow:0 0 8px #ffce3d;";
     btn.addEventListener("click", function(e){ e.stopPropagation(); start(); toggle(); });

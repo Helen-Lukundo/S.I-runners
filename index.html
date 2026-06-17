@@ -110,7 +110,7 @@
     </div>
   </div>
 
-  <div id="version">v3.2</div>
+  <div id="version">v3.3</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -121,6 +121,7 @@
 
     // ---------- Characters (each: own glow color, size, and accessory) ----------
     var CHARACTERS = [
+      { id: "onyx",    name: "ONYX",    cost: 0,    body: 0x0a0a0e, neon: 0xbfe9ff, accent: 0x6fd0ff, scale: 0.92, slim: 0.82, acc: "spikes" },
       { id: "vex",     name: "VEX",     cost: 0,    body: 0x0a2a55, neon: 0x2ea8ff, accent: 0xeaf6ff, scale: 1.04, acc: "armor" },
       { id: "nova",    name: "NOVA",    cost: 200,  body: 0x2a0a2e, neon: 0xff2e9a, accent: 0xffd23e, scale: 0.94, acc: "halo" },
       { id: "zenith",  name: "ZENITH",  cost: 500,  body: 0x2e2300, neon: 0xffd23e, accent: 0x00f0ff, scale: 1.10, acc: "crown" },
@@ -136,7 +137,7 @@
     ];
 
     // ---------- Save data (localStorage) ----------
-    var save = { bank: 0, owned: ["vex"], selected: "vex", best: 0, boosts: [] };
+    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [] };
     function loadSave() {
       try {
         var raw = localStorage.getItem("siRunners3D");
@@ -150,6 +151,8 @@
           if (save.owned.indexOf("vex") < 0) save.owned.push("vex");
         }
       } catch (e) { /* storage blocked — play without saving */ }
+      // always grant free characters
+      CHARACTERS.forEach(function (c) { if (c.cost === 0 && save.owned.indexOf(c.id) < 0) save.owned.push(c.id); });
     }
     function writeSave() {
       try { localStorage.setItem("siRunners3D", JSON.stringify(save)); } catch (e) {}
@@ -180,8 +183,8 @@
       loadSave();
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x070314);
-      scene.fog = new THREE.Fog(0x0a0524, 35, 120);
+      scene.background = new THREE.Color(0x0a0f18);
+      scene.fog = new THREE.Fog(0x0d1420, 35, 125);
 
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 400);
       camera.position.set(0, 6.2, 11);
@@ -192,9 +195,9 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       $("game").appendChild(renderer.domElement);
 
-      scene.add(new THREE.AmbientLight(0x4455aa, 0.9));
-      var key = new THREE.DirectionalLight(0xff66dd, 0.9); key.position.set(-8, 18, 6); scene.add(key);
-      var rim = new THREE.DirectionalLight(0x33ffff, 0.8); rim.position.set(8, 12, -10); scene.add(rim);
+      scene.add(new THREE.AmbientLight(0x6a7a9a, 0.85));
+      var key = new THREE.DirectionalLight(0xbfd0ff, 0.85); key.position.set(-8, 18, 6); scene.add(key);
+      var rim = new THREE.DirectionalLight(0xffd9a8, 0.6); rim.position.set(8, 12, -10); scene.add(rim);
 
       buildWorld();
       // player is a positioning group; visual (model or fallback) goes inside it
@@ -227,8 +230,8 @@
 
     // ---------- World ----------
     function buildWorld() {
-      var roadMat = new THREE.MeshStandardMaterial({ color: 0x12082b, metalness: 0.6, roughness: 0.4 });
-      var glowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+      var roadMat = new THREE.MeshStandardMaterial({ color: 0x14181f, metalness: 0.5, roughness: 0.5 });
+      var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();
         var road = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, SEG), roadMat);
@@ -239,31 +242,31 @@
         });
         [-4.4, 4.4].forEach(function (x) {
           var edge = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, SEG),
-            new THREE.MeshBasicMaterial({ color: x < 0 ? 0xff2e9a : 0x7b5bff }));
+            new THREE.MeshBasicMaterial({ color: x < 0 ? 0x3a78c8 : 0xc86a3a }));
           edge.position.set(x, 0.1, 0); tile.add(edge);
         });
         tile.position.z = -i * SEG;
         scene.add(tile); roadTiles.push(tile);
       }
-      var neonPalette = [0x00f0ff, 0xff2e9a, 0xb14bff, 0xffd23e, 0x2effc2, 0xff6a00];
+      // realistic city-light colors: warm/cool whites, amber, muted blue/teal, soft red
+      var neonPalette = [0xfff1d0, 0xcfe6ff, 0xffb060, 0x6aa9ff, 0x47c9b8, 0xff7a6a, 0xfff4e0];
 
-      // ---- giant moon + sky glow ----
-      var moon = new THREE.Mesh(new THREE.SphereGeometry(22, 32, 32),
-        new THREE.MeshBasicMaterial({ color: 0xff3e7a }));
-      moon.position.set(-30, 48, -180); scene.add(moon);
-      var moonHalo = new THREE.Mesh(new THREE.SphereGeometry(27, 32, 32),
-        new THREE.MeshBasicMaterial({ color: 0x9b1f55, transparent: true, opacity: 0.35 }));
+      // ---- pale moon + soft halo ----
+      var moon = new THREE.Mesh(new THREE.SphereGeometry(20, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0xeaf0ff }));
+      moon.position.set(-28, 50, -185); scene.add(moon);
+      var moonHalo = new THREE.Mesh(new THREE.SphereGeometry(26, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0x9fb6e0, transparent: true, opacity: 0.18 }));
       moonHalo.position.copy(moon.position); scene.add(moonHalo);
 
-      // ---- tiered "pagoda-tech" towers + holo-billboards, both sides ----
-      for (var s = 0; s < 64; s++) {
+      // ---- tiered pagoda towers w/ curved roofs + lanterns + banners ----
+      for (var s = 0; s < 70; s++) {
         var side = s % 2 === 0 ? -1 : 1;
         var col = neonPalette[(Math.random() * neonPalette.length) | 0];
         var baseX = side * (8 + Math.random() * 22);
         var baseZ = -Math.random() * TRACK_LEN;
         var tower = new THREE.Group();
 
-        // stacked tiers, shrinking as they go up (futuristic pagoda feel)
         var tiers = 2 + (Math.random() * 4 | 0);
         var w = 3 + Math.random() * 3.5;
         var y = 0;
@@ -271,32 +274,39 @@
           var th = 4 + Math.random() * 5;
           var seg = new THREE.Mesh(
             new THREE.BoxGeometry(w, th, w),
-            new THREE.MeshStandardMaterial({ color: 0x0b0820, emissive: col, emissiveIntensity: 0.3, metalness: 0.75, roughness: 0.5 })
+            new THREE.MeshStandardMaterial({ color: 0x10141d, emissive: col, emissiveIntensity: 0.22, metalness: 0.55, roughness: 0.6 })
           );
           seg.position.y = y + th / 2; tower.add(seg);
-          // glowing eave between tiers
-          var eave = new THREE.Mesh(
-            new THREE.BoxGeometry(w + 0.8, 0.3, w + 0.8),
-            new THREE.MeshBasicMaterial({ color: col })
-          );
+          // curved pagoda roof (cone) over each tier
+          var roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.92, 1.4, 4),
+            new THREE.MeshStandardMaterial({ color: 0x161b26, emissive: col, emissiveIntensity: 0.3, metalness: 0.5, roughness: 0.6 }));
+          roof.rotation.y = Math.PI / 4; roof.position.y = y + th + 0.6; tower.add(roof);
+          // soft glowing eave
+          var eave = new THREE.Mesh(new THREE.BoxGeometry(w + 0.7, 0.18, w + 0.7),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 }));
           eave.position.y = y + th; tower.add(eave);
+          // hanging lanterns under the eave
+          if (Math.random() < 0.6) {
+            var lx = (Math.random() - 0.5) * w;
+            var lantern = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10),
+              new THREE.MeshBasicMaterial({ color: 0xffb060 }));
+            lantern.scale.y = 1.3; lantern.position.set(lx, y + th - 0.7, (side > 0 ? -1 : 1) * (w/2 + 0.1)); tower.add(lantern);
+          }
           y += th; w *= 0.78;
         }
-        // antenna spire on tall ones
         if (tiers >= 4) {
-          var spire = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.2, 6, 8),
-            new THREE.MeshBasicMaterial({ color: col }));
-          spire.position.y = y + 3; tower.add(spire);
+          var spire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.16, 6, 8),
+            new THREE.MeshBasicMaterial({ color: col })); spire.position.y = y + 3; tower.add(spire);
         }
-        // vertical holo-billboard facing the road
-        if (Math.random() < 0.5) {
-          var bw = 1.6 + Math.random() * 1.6, bh = 4 + Math.random() * 6;
+        // tall vertical banner sign facing the road
+        if (Math.random() < 0.55) {
+          var bw = 0.7 + Math.random() * 0.8, bh = 5 + Math.random() * 7;
           var bill = new THREE.Mesh(
             new THREE.PlaneGeometry(bw, bh),
-            new THREE.MeshBasicMaterial({ color: neonPalette[(Math.random()*neonPalette.length)|0], transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+            new THREE.MeshBasicMaterial({ color: neonPalette[(Math.random()*neonPalette.length)|0], transparent: true, opacity: 0.9, side: THREE.DoubleSide })
           );
-          bill.position.set(side * (w * -0.1 - 1.6), 5 + Math.random() * 6, side > 0 ? -w : w);
-          bill.rotation.y = side > 0 ? -0.4 : 0.4;
+          bill.position.set(side * (w * -0.1 - 1.8), 6 + Math.random() * 6, side > 0 ? -w : w);
+          bill.rotation.y = side > 0 ? -0.35 : 0.35;
           tower.add(bill);
         }
         tower.position.set(baseX, -0.2, baseZ);
@@ -430,6 +440,7 @@
       var size = new THREE.Vector3(); bb.getSize(size);
       var s = targetH / (size.y || 1);
       root.scale.setScalar(s);
+      if (def.slim) { root.scale.x *= def.slim; root.scale.z *= def.slim; } // slimmer build
       root.updateMatrixWorld(true);
       bb.setFromObject(root);
       root.position.y -= bb.min.y;
@@ -464,7 +475,20 @@
     function addAccessory(g, def, h) {
       var headY = h * 0.95; // near the top of the robot
       var glow = new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 1.0, metalness: 0.4, roughness: 0.2 });
-      if (def.acc === "armor") {
+      if (def.acc === "spikes") {
+        var rows = [
+          { y: headY + 0.35, z: 0.0,  len: 0.42 },
+          { y: headY + 0.15, z: -0.12, len: 0.38 },
+          { y: h * 0.82,     z: -0.28, len: 0.34 },
+          { y: h * 0.66,     z: -0.34, len: 0.30 },
+          { y: h * 0.50,     z: -0.38, len: 0.26 },
+          { y: h * 0.36,     z: -0.40, len: 0.22 }
+        ];
+        rows.forEach(function (r) {
+          var spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, r.len, 6), glow);
+          spike.rotation.x = -Math.PI / 2.4; spike.position.set(0, r.y, r.z); g.add(spike);
+        });
+      } else if (def.acc === "armor") {
         // original armored hero-suit kit (chest core, shoulders, faceplate, gauntlets)
         var coreOuter = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.05, 10, 22), glow); coreOuter.position.set(0, h*0.62, 0.42); g.add(coreOuter);
         var coreInner = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), new THREE.MeshBasicMaterial({ color: 0xeaf6ff })); coreInner.position.set(0, h*0.62, 0.42); g.add(coreInner);
@@ -627,7 +651,12 @@
     function figureSVG(def) {
       var b = hex(def.body), n = hex(def.neon), a = hex(def.accent);
       var acc = "";
-      if (def.acc === "armor") {
+      if (def.acc === "spikes") {
+        acc = '<polygon points="36,20 40,4 44,20" fill="'+a+'"/>' +
+              '<polygon points="40,30 44,16 47,32" fill="'+a+'"/>' +
+              '<polygon points="40,44 45,32 48,48" fill="'+a+'"/>' +
+              '<polygon points="40,58 46,48 48,62" fill="'+a+'"/>';
+      } else if (def.acc === "armor") {
         acc = '<circle cx="40" cy="58" r="6" fill="'+a+'"/><circle cx="40" cy="58" r="3" fill="#eaf6ff"/>' +
               '<ellipse cx="24" cy="46" rx="7" ry="5" fill="'+n+'"/><ellipse cx="56" cy="46" rx="7" ry="5" fill="'+n+'"/>';
       } else if (def.acc === "halo") {

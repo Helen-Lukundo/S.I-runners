@@ -121,6 +121,7 @@
 
     // ---------- Characters (each: own glow color, size, and accessory) ----------
     var CHARACTERS = [
+      { id: "void",    name: "VOID",    cost: 0,    body: 0x0c0c12, neon: 0xffffff, accent: 0xffffff, scale: 0.98, anime: true },
       { id: "onyx",    name: "ONYX",    cost: 0,    body: 0x0a0a0e, neon: 0xbfe9ff, accent: 0x6fd0ff, scale: 0.92, slim: 0.82, acc: "spikes" },
       { id: "vex",     name: "VEX",     cost: 0,    body: 0x0a2a55, neon: 0x2ea8ff, accent: 0xeaf6ff, scale: 1.04, acc: "armor" },
       { id: "nova",    name: "NOVA",    cost: 200,  body: 0x2a0a2e, neon: 0xff2e9a, accent: 0xffd23e, scale: 0.94, acc: "halo" },
@@ -422,7 +423,8 @@
 
     function applyCharacter(def) {
       clearVisual();
-      if (modelReady && modelProto) addModelRobot(def);
+      if (def.anime) buildAnimeRunner(def);
+      else if (modelReady && modelProto) addModelRobot(def);
       else buildBoxRobot(def);
     }
 
@@ -567,6 +569,73 @@
       g.add(playerArmL, playerArmR, playerLegL, playerLegR);
 
       playerVisual = g; player.add(g);
+    }
+
+    // ---------- Original anime runner: monochrome, white hair, cracked white mask ----------
+    function buildAnimeRunner(def) {
+      var g = new THREE.Group();
+      var coat   = new THREE.MeshStandardMaterial({ color: 0x0c0c12, metalness: 0.2, roughness: 0.75 });
+      var coatHi = new THREE.MeshStandardMaterial({ color: 0x20202a, metalness: 0.2, roughness: 0.65 });
+      var skin   = new THREE.MeshStandardMaterial({ color: 0xececed, metalness: 0.0, roughness: 0.9 });
+      var white  = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.22, metalness: 0.0, roughness: 0.55 });
+      var hairMat= new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.0, roughness: 0.5 });
+      var crack  = new THREE.MeshStandardMaterial({ color: 0x101016, metalness: 0.0, roughness: 1.0 });
+      var glow   = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+      function box(w,h,d,m){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m); }
+      function cyl(rt,rb,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,16), m); }
+      function ball(r,m){ return new THREE.Mesh(new THREE.SphereGeometry(r,16,16), m); }
+      function cone(r,h,m){ return new THREE.Mesh(new THREE.ConeGeometry(r,h,6), m); }
+
+      // body: long black high-collar coat
+      var pelvis = box(0.82, 0.45, 0.5, coat); pelvis.position.y = 1.32; g.add(pelvis);
+      var torso  = cyl(0.42, 0.56, 1.0, coat); torso.position.y = 2.0; g.add(torso);
+      var seam   = box(0.06, 0.95, 0.5, coatHi); seam.position.set(0, 2.0, 0.27); g.add(seam);
+      var belt   = box(0.86, 0.1, 0.54, coatHi); belt.position.y = 1.5; g.add(belt);
+      var collar = cyl(0.3, 0.46, 0.42, coat); collar.position.y = 2.62; g.add(collar);
+      var collarB= box(0.5, 0.5, 0.12, coat); collarB.position.set(0, 2.74, -0.22); g.add(collarB);
+      [-0.22, 0.22].forEach(function (x) { var tail = box(0.34, 0.95, 0.12, coat); tail.position.set(x, 1.18, -0.3); tail.rotation.x = 0.14; g.add(tail); });
+      var shL = ball(0.24, coat); shL.position.set(-0.6, 2.42, 0); g.add(shL);
+      var shR = ball(0.24, coat); shR.position.set(0.6, 2.42, 0); g.add(shR);
+
+      // pale head
+      var neck = cyl(0.12, 0.14, 0.18, skin); neck.position.y = 2.76; g.add(neck);
+      var head = ball(0.3, skin); head.position.y = 3.04; head.scale.set(0.95, 1.08, 1.0); g.add(head);
+
+      // cracked white mask over the face
+      var mask = box(0.38, 0.44, 0.12, white); mask.position.set(0, 3.04, 0.2); g.add(mask);
+      var c1 = box(0.025, 0.3, 0.02, crack);  c1.position.set(-0.05, 3.06, 0.27); c1.rotation.z =  0.28; g.add(c1);
+      var c2 = box(0.025, 0.18, 0.02, crack); c2.position.set(-0.01, 3.16, 0.27); c2.rotation.z = -0.7;  g.add(c2);
+      var c3 = box(0.025, 0.24, 0.02, crack); c3.position.set( 0.11, 2.99, 0.27); c3.rotation.z =  0.5;  g.add(c3);
+      var c4 = box(0.16, 0.025, 0.02, crack); c4.position.set( 0.0,  3.02, 0.27); g.add(c4);
+      // glowing eyes peeking through
+      var eyeL = box(0.11, 0.035, 0.02, glow); eyeL.position.set(-0.1, 3.07, 0.275); g.add(eyeL);
+      var eyeR = box(0.11, 0.035, 0.02, glow); eyeR.position.set( 0.1, 3.07, 0.275); g.add(eyeR);
+
+      // spiky white hair
+      var cap = ball(0.28, hairMat); cap.position.set(0, 3.16, -0.04); cap.scale.set(1.0, 0.72, 1.0); g.add(cap);
+      var spikes = [
+        { x: 0.0,  y: 3.34, z: 0.04,  rx: -0.25, len: 0.52 },
+        { x:-0.16, y: 3.3,  z: 0.06,  rx: -0.1,  len: 0.44 },
+        { x: 0.16, y: 3.3,  z: 0.06,  rx: -0.1,  len: 0.44 },
+        { x:-0.1,  y: 3.32, z: -0.16, rx:  0.35, len: 0.48 },
+        { x: 0.1,  y: 3.32, z: -0.16, rx:  0.35, len: 0.48 },
+        { x: 0.0,  y: 3.3,  z: -0.24, rx:  0.6,  len: 0.42 },
+        { x:-0.25, y: 3.2,  z: -0.02, rx: -0.1,  len: 0.36 },
+        { x: 0.25, y: 3.2,  z: -0.02, rx: -0.1,  len: 0.36 }
+      ];
+      spikes.forEach(function (s) { var m = cone(0.09, s.len, hairMat); m.position.set(s.x, s.y, s.z); m.rotation.x = s.rx; g.add(m); });
+
+      // limbs (black coat with white trim), wired so the run animation swings them
+      playerArmL = makeArm(coat, coatHi, white); playerArmL.position.set(-0.6, 2.42, 0);
+      playerArmR = makeArm(coat, coatHi, white); playerArmR.position.set(0.6, 2.42, 0);
+      playerLegL = makeLeg(coat, coatHi, white); playerLegL.position.set(-0.24, 1.3, 0);
+      playerLegR = makeLeg(coat, coatHi, white); playerLegR.position.set(0.24, 1.3, 0);
+      g.add(playerArmL, playerArmR, playerLegL, playerLegR);
+
+      g.scale.setScalar(def.scale || 1);
+      playerVisual = g; player.add(g);
+      usingModel = false; mixer = null;
     }
 
     function makeArm(plate, dark, neon) {

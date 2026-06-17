@@ -78,6 +78,8 @@
   .ssArrow { cursor: pointer; width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.5); background: rgba(10,4,30,0.6); color: #9fd9ff; font-size: 20px; box-shadow: 0 0 16px rgba(80,40,200,0.3); }
   .ssArrow:active { transform: scale(0.92); }
   .ssCharName { min-width: 150px; text-align: center; font-weight: 900; letter-spacing: 2px; font-size: clamp(16px,5vw,24px); color: #fff; text-shadow: 0 0 12px rgba(0,240,255,0.7); }
+  .ssCharCol { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 180px; }
+  .ssCharPower { font-size: clamp(11px,3.2vw,13px); letter-spacing: 1px; color: #ffe79a; text-shadow: 0 0 8px rgba(255,190,40,0.7); }
 </style>
 </head>
 <body>
@@ -100,7 +102,10 @@
 
     <div class="ssCharBar">
       <button class="ssArrow" id="charPrev">◀</button>
-      <div class="ssCharName" id="charName">VOID</div>
+      <div class="ssCharCol">
+        <div class="ssCharName" id="charName">VOID</div>
+        <div class="ssCharPower" id="charPower"></div>
+      </div>
       <button class="ssArrow" id="charNext">▶</button>
     </div>
     <div class="ssBottom">
@@ -134,7 +139,7 @@
     </div>
   </div>
 
-  <div id="version">v3.5</div>
+  <div id="version">v3.6</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -154,13 +159,13 @@
       { id: "phantom", name: "PHANTOM", cost: 1300, body: 0x1c0a36, neon: 0xb14bff, accent: 0x00f0ff, scale: 1.16, acc: "jetpack" }
     ];
 
-    // ---- 50 extra unlockable characters (colour + gear variants) ----
+    // ---- 30 extra unlockable characters (colour + gear variants) ----
     (function () {
       var PAL = [0xff3ea5,0x00f0ff,0xffd23e,0x2effc2,0xb14bff,0xff7a3e,0x3ea5ff,0xff2e6a,0x7bff5b,0xa0a8ff,0xff5ad0,0x5affc8,0xffe14d,0xff4d4d,0x4dffd2,0xc77bff,0x4dff8a,0xff8ad6,0x8ad6ff,0xd6ff8a];
       var ACC = ["spikes","armor","halo","crown","antennae","jetpack","visor"];
       var PRE = ["NEO","CY","HEX","RYU","ZE","VOX","KAI","AX","NYX","ORB","JET","RAI","DRA","MEK","SOL","LUN","TAO","VIR","ECH","ZAN","KEN","RIO","DUO","FEN","GLY","HALO"];
       var SUF = ["BYTE","WAVE","CORE","FLUX","DASH","BOLT","ZERO","NOVA","RUSH","EDGE","PIX","JOLT","VOLT","RIFT","BLAZE","STORM","ARC","NEON","FANG","GHOST"];
-      for (var i = 0; i < 50; i++) {
+      for (var i = 0; i < 30; i++) {
         var neon = PAL[i % PAL.length];
         var nm = PRE[i % PRE.length] + SUF[(i * 3 + 1) % SUF.length];
         CHARACTERS.push({
@@ -170,6 +175,22 @@
         });
       }
     })();
+
+    // ---- Powers: every character gets an ability based on its appearance/gear ----
+    function powerInfo(def) {
+      if (def.anime) return { key: "revive", name: "PHANTOM \u2014 extra life" };
+      switch (def.acc) {
+        case "jetpack":  return { key: "jump",      name: "ROCKET JUMP \u2014 jump higher" };
+        case "antennae": return { key: "magnet",    name: "MAGNET \u2014 pulls coins" };
+        case "armor":    return { key: "shield",    name: "ARMOR \u2014 survive a crash" };
+        case "crown":    return { key: "coins",     name: "ROYAL \u2014 double coins" };
+        case "halo":     return { key: "revive",    name: "GUARDIAN \u2014 extra life" };
+        case "spikes":   return { key: "score",     name: "AGGRESSOR \u2014 1.5x score" };
+        case "visor":    return { key: "headstart", name: "SCANNER \u2014 safe head start" };
+        default:         return { key: "shield",    name: "SHIELD \u2014 survive a crash" };
+      }
+    }
+    CHARACTERS.forEach(function (c) { var p = powerInfo(c); c.power = p.key; c.powerName = p.name; });
 
     // ---------- Boosts (buy once, then always active) ----------
     var BOOSTS = [
@@ -217,6 +238,7 @@
     var lane = 1, targetX = 0, vy = 0, grounded = true, runT = 0;
     var speed = BASE_SPEED, distance = 0, coinCount = 0, score = 0;
     var jumpAction = null, shieldArmed = false, shieldMesh = null, magnetOn = false, invuln = 0;
+    var jumpV = JUMP_V, coinMult = 1, scoreMult = 1, extraLives = 0;
     var state = "menu";
 
     function $(id) { return document.getElementById(id); }
@@ -746,7 +768,7 @@
       window.addEventListener("resize", onResize);
     }
     function ownedChars() { return CHARACTERS.filter(function (c) { return save.owned.indexOf(c.id) >= 0; }); }
-    function updateCharName() { var el = document.getElementById("charName"); if (el) el.textContent = charById(save.selected).name; }
+    function updateCharName() { var d = charById(save.selected); var el = document.getElementById("charName"); if (el) el.textContent = d.name; var pe = document.getElementById("charPower"); if (pe) pe.textContent = d.powerName || ""; }
     function cycleChar(dir) {
       var list = ownedChars(); if (!list.length) return;
       var idx = 0; for (var i = 0; i < list.length; i++) if (list[i].id === save.selected) idx = i;
@@ -758,7 +780,7 @@
     function move(dir) { lane = Math.max(0, Math.min(2, lane + dir)); targetX = LANES[lane]; }
     function jump() {
       if (!grounded) return;
-      vy = JUMP_V; grounded = false;
+      vy = jumpV; grounded = false;
       if (jumpAction && runAction) {
         jumpAction.reset(); jumpAction.play();
         runAction.crossFadeTo(jumpAction, 0.1, false);
@@ -919,6 +941,17 @@
       if (save.boosts.indexOf("headstart") >= 0) { distance = 300; invuln = 2.5; }
       else invuln = 0;
 
+      // apply this character's power (based on its appearance)
+      jumpV = JUMP_V; coinMult = 1; scoreMult = 1; extraLives = 0;
+      var pw = charById(save.selected).power;
+      if (pw === "magnet") magnetOn = true;
+      else if (pw === "shield") { shieldArmed = true; setShieldBubble(true); }
+      else if (pw === "headstart") { distance = Math.max(distance, 300); invuln = Math.max(invuln, 2.5); }
+      else if (pw === "jump") jumpV = JUMP_V * 1.28;
+      else if (pw === "coins") coinMult = 2;
+      else if (pw === "score") scoreMult = 1.5;
+      else if (pw === "revive") extraLives = 1;
+
       state = "playing";
       $("startScreen").classList.add("hidden");
       $("overScreen").classList.add("hidden");
@@ -1013,7 +1046,7 @@
       if (shieldMesh) { shieldMesh.rotation.y += dt; }
 
       checkCollisions();
-      score = Math.floor(distance) + coinCount * 10;
+      score = Math.floor(distance * scoreMult) + coinCount * 10;
       $("scoreVal").textContent = score;
       $("coinVal").textContent = coinCount;
     }
@@ -1026,6 +1059,7 @@
           if (hit) {
             if (invuln > 0) { /* safe */ }
             else if (shieldArmed) { shieldArmed = false; setShieldBubble(false); invuln = 1.0; o.position.z = 60; }
+            else if (extraLives > 0) { extraLives--; invuln = 1.2; o.position.z = 60; }
             else return gameOver();
           }
         }
@@ -1037,7 +1071,7 @@
         var near = Math.abs(c.position.z - pz) < 1.1;
         var magnetGrab = magnetOn && Math.abs(c.position.x - player.position.x) < 0.9 && near;
         if ((sameLane && near && player.position.y < 2.2) || magnetGrab) {
-          c.userData.alive = false; c.visible = false; coinCount++;
+          c.userData.alive = false; c.visible = false; coinCount += coinMult;
         }
       }
       for (var k = 0; k < chests.length; k++) {

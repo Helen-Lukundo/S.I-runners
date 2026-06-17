@@ -139,7 +139,7 @@
     </div>
   </div>
 
-  <div id="version">v3.6</div>
+  <div id="version">v3.7</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -159,19 +159,29 @@
       { id: "phantom", name: "PHANTOM", cost: 1300, body: 0x1c0a36, neon: 0xb14bff, accent: 0x00f0ff, scale: 1.16, acc: "jetpack" }
     ];
 
-    // ---- 30 extra unlockable characters (colour + gear variants) ----
+    // ---- 30 extra unlockable characters: each a unique colour + gear ----
     (function () {
-      var PAL = [0xff3ea5,0x00f0ff,0xffd23e,0x2effc2,0xb14bff,0xff7a3e,0x3ea5ff,0xff2e6a,0x7bff5b,0xa0a8ff,0xff5ad0,0x5affc8,0xffe14d,0xff4d4d,0x4dffd2,0xc77bff,0x4dff8a,0xff8ad6,0x8ad6ff,0xd6ff8a];
-      var ACC = ["spikes","armor","halo","crown","antennae","jetpack","visor"];
-      var PRE = ["NEO","CY","HEX","RYU","ZE","VOX","KAI","AX","NYX","ORB","JET","RAI","DRA","MEK","SOL","LUN","TAO","VIR","ECH","ZAN","KEN","RIO","DUO","FEN","GLY","HALO"];
+      function hsl(h, s, l) {
+        h /= 360; var r, g, b;
+        function hue(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; }
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+        r = hue(p, q, h + 1/3); g = hue(p, q, h); b = hue(p, q, h - 1/3);
+        return (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
+      }
+      var ACC = ["spikes","armor","halo","crown","antennae","jetpack","visor","wings","mohawk","horns","orbs","cape"];
+      var PRE = ["NEO","CY","HEX","RYU","ZE","VOX","KAI","AX","NYX","ORB","JET","RAI","DRA","MEK","SOL","LUN","TAO","VIR","ECH","ZAN","KEN","RIO","DUO","FEN","GLY","HALO","UMI","KOI","ZED","ASH"];
       var SUF = ["BYTE","WAVE","CORE","FLUX","DASH","BOLT","ZERO","NOVA","RUSH","EDGE","PIX","JOLT","VOLT","RIFT","BLAZE","STORM","ARC","NEON","FANG","GHOST"];
       for (var i = 0; i < 30; i++) {
-        var neon = PAL[i % PAL.length];
-        var nm = PRE[i % PRE.length] + SUF[(i * 3 + 1) % SUF.length];
+        var hueA = (i * 137.5) % 360;             // golden-angle = every hue distinct
         CHARACTERS.push({
-          id: "rx" + i, name: nm, cost: 250 + i * 60,
-          body: 0x0a0818, neon: neon, accent: PAL[(i + 5) % PAL.length],
-          scale: 0.88 + (i % 6) * 0.05, acc: ACC[i % ACC.length]
+          id: "rx" + i, name: PRE[i % PRE.length] + SUF[(i * 7 + 1) % SUF.length],
+          cost: 250 + i * 70,
+          body: hsl(hueA, 0.6, 0.10),             // dark tinted body of its own hue
+          neon: hsl(hueA, 0.85, 0.6),
+          accent: hsl((hueA + 60) % 360, 0.9, 0.66),
+          scale: 0.82 + (i % 7) * 0.06,           // varied builds
+          slim: (i % 3 === 0) ? 0.8 : undefined,
+          acc: ACC[i % ACC.length]                // 12 gear types
         });
       }
     })();
@@ -187,6 +197,11 @@
         case "halo":     return { key: "revive",    name: "GUARDIAN \u2014 extra life" };
         case "spikes":   return { key: "score",     name: "AGGRESSOR \u2014 1.5x score" };
         case "visor":    return { key: "headstart", name: "SCANNER \u2014 safe head start" };
+        case "wings":    return { key: "jump",      name: "WINGS \u2014 jump higher" };
+        case "mohawk":   return { key: "score",     name: "PUNK \u2014 1.5x score" };
+        case "horns":    return { key: "shield",    name: "BRUISER \u2014 survive a crash" };
+        case "orbs":     return { key: "magnet",    name: "ORBITER \u2014 pulls coins" };
+        case "cape":     return { key: "headstart", name: "HERO \u2014 safe head start" };
         default:         return { key: "shield",    name: "SHIELD \u2014 survive a crash" };
       }
     }
@@ -516,6 +531,7 @@
           var mats = Array.isArray(o.material) ? o.material : [o.material];
           mats.forEach(function (m) {
             if (m.emissive) { m.emissive.setHex(def.neon); m.emissiveIntensity = 0.5; }
+            if (m.color && def.body != null) m.color.setHex(def.body);
             m.metalness = 0.55; m.roughness = 0.45; m.needsUpdate = true;
           });
         }
@@ -583,6 +599,31 @@
           var flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 8), new THREE.MeshBasicMaterial({ color: def.neon }));
           flame.rotation.x = Math.PI; flame.position.set(x, h * 0.32, -0.45); g.add(flame);
         });
+      } else if (def.acc === "wings") {
+        [-1, 1].forEach(function (s) {
+          var wing = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.5), glow);
+          wing.position.set(s * 0.42, h * 0.7, -0.3); wing.rotation.z = s * 0.5; wing.rotation.y = s * 0.5; g.add(wing);
+        });
+      } else if (def.acc === "mohawk") {
+        for (var mi = 0; mi < 5; mi++) {
+          var mk = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.32 - Math.abs(mi - 2) * 0.05, 6), glow);
+          mk.position.set(0, headY + 0.36, -0.18 + mi * 0.09); g.add(mk);
+        }
+      } else if (def.acc === "horns") {
+        [-1, 1].forEach(function (s) {
+          var hn = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.34, 8), glow);
+          hn.position.set(s * 0.18, headY + 0.34, 0); hn.rotation.z = s * 0.5; g.add(hn);
+        });
+      } else if (def.acc === "orbs") {
+        for (var oi = 0; oi < 3; oi++) {
+          var an = (oi / 3) * Math.PI * 2;
+          var orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), glow);
+          orb.position.set(Math.cos(an) * 0.55, h * 0.55, Math.sin(an) * 0.55); g.add(orb);
+        }
+      } else if (def.acc === "cape") {
+        var cape = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.06),
+          new THREE.MeshStandardMaterial({ color: def.body, emissive: def.neon, emissiveIntensity: 0.3, metalness: 0.3, roughness: 0.6 }));
+        cape.position.set(0, h * 0.55, -0.36); cape.rotation.x = 0.12; g.add(cape);
       }
     }
 

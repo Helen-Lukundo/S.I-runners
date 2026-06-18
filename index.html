@@ -131,7 +131,7 @@
       <button class="ssPlay" id="startBtn">PLAY</button>
       <button class="ssIcon" id="muteBtn"><span class="ic">🔊</span><span class="lb">SOUND</span></button>
     </div>
-    <div id="touchHint">◀ ▶ / A D move &middot; ▲ jump &middot; swipe on phone</div>
+    <div id="touchHint">◀ ▶ / A D move &middot; ▲ jump &middot; ▼ slide &middot; swipe on phone</div>
   </div>
 
   <!-- Shop -->
@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.8</div>
+  <div id="version">v4.9</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -288,6 +288,7 @@
     var speed = BASE_SPEED, distance = 0, coinCount = 0, score = 0;
     var jumpAction = null, shieldArmed = false, shieldMesh = null, magnetOn = false, invuln = 0;
     var jumpV = JUMP_V, coinMult = 1, scoreMult = 1, extraLives = 0;
+    var sliding = false, slideT = 0;
     var state = "menu";
 
     function $(id) { return document.getElementById(id); }
@@ -297,7 +298,7 @@
 
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x070b14);
-      scene.fog = new THREE.Fog(0x0b1322, 28, 150);
+      scene.fog = new THREE.Fog(0x0c0f16, 28, 150);
 
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 400);
       camera.position.set(0, 6.2, 11);
@@ -311,9 +312,9 @@
       $("game").appendChild(renderer.domElement);
 
       // realistic night lighting: cool sky + warm fill + moon key
-      scene.add(new THREE.HemisphereLight(0x35435e, 0x05070c, 0.75));
-      scene.add(new THREE.AmbientLight(0x1e2a40, 0.45));
-      var key = new THREE.DirectionalLight(0xbcd2ff, 1.05); key.position.set(-22, 40, -28); scene.add(key);
+      scene.add(new THREE.HemisphereLight(0x4a4f59, 0x0a0b0e, 0.8));
+      scene.add(new THREE.AmbientLight(0x2a2e36, 0.5));
+      var key = new THREE.DirectionalLight(0xe6ebf2, 1.12); key.position.set(-22, 40, -28); scene.add(key);
       var rim = new THREE.DirectionalLight(0xffc89a, 0.4); rim.position.set(12, 14, 12); scene.add(rim);
 
       buildWorld();
@@ -383,9 +384,9 @@
       var starGeo = new THREE.BufferGeometry(); starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
       scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 0.8, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9 })));
 
-      var roadMat = new THREE.MeshStandardMaterial({ color: 0x0a0d13, metalness: 0.75, roughness: 0.35 });
-      var paveMat = new THREE.MeshStandardMaterial({ color: 0x0c1018, metalness: 0.1, roughness: 0.95 });
-      var paveMat2 = new THREE.MeshStandardMaterial({ color: 0x10151f, metalness: 0.1, roughness: 0.95 });
+      var roadMat = new THREE.MeshStandardMaterial({ color: 0x101216, metalness: 0.65, roughness: 0.45 });
+      var paveMat = new THREE.MeshStandardMaterial({ color: 0x17191e, metalness: 0.08, roughness: 0.95 });
+      var paveMat2 = new THREE.MeshStandardMaterial({ color: 0x202329, metalness: 0.08, roughness: 0.92 });
       var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
       var markMat = new THREE.MeshStandardMaterial({ color: 0xc4ccd8, roughness: 0.6, metalness: 0.0, emissive: 0x20262e, emissiveIntensity: 0.2 });
       var grooveMat = new THREE.MeshStandardMaterial({ color: 0x06080c, roughness: 1.0 });
@@ -631,13 +632,31 @@
     }
     function spawnObstacle(z) {
       var l = (Math.random() * 3) | 0;
-      var tall = Math.random() < 0.5;
-      var geo = tall ? new THREE.BoxGeometry(1.6, 3.0, 0.7) : new THREE.BoxGeometry(1.8, 1.0, 0.7);
-      var ob = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: 0x1a0e3a, emissive: tall ? 0xff2e6a : 0xffae2e, emissiveIntensity: 0.7, metalness: 0.5, roughness: 0.4
-      }));
-      ob.position.set(LANES[l], tall ? 1.5 : 0.5, z);
-      ob.userData = { lane: l, low: !tall };
+      var r = Math.random();
+      var type = r < 0.4 ? "jump" : (r < 0.72 ? "slide" : "block");
+      var ob = new THREE.Group();
+      if (type === "jump") {
+        // low striped road barrier  ->  JUMP over it
+        var bar = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.7, 0.5), new THREE.MeshStandardMaterial({ color: 0xf5c518, emissive: 0x3a2c00, emissiveIntensity: 0.3, roughness: 0.6 }));
+        bar.position.y = 0.85; ob.add(bar);
+        [-0.6, 0, 0.6].forEach(function (sx) { var st = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.72, 0.52), new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.7 })); st.position.set(sx, 0.85, 0); ob.add(st); });
+        [-0.85, 0.85].forEach(function (lx) { var leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.85, 0.12), new THREE.MeshStandardMaterial({ color: 0x9a9aa2 })); leg.position.set(lx, 0.42, 0); ob.add(leg); });
+      } else if (type === "slide") {
+        // overhead barrier with a gap underneath  ->  SLIDE under it
+        var legMat = new THREE.MeshStandardMaterial({ color: 0x8a8f98, metalness: 0.6, roughness: 0.5 });
+        [-1.0, 1.0].forEach(function (lx) { var leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.6, 0.18), legMat); leg.position.set(lx, 1.3, 0); ob.add(leg); });
+        var sign = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 0.3), new THREE.MeshStandardMaterial({ color: 0x1530c0, emissive: 0x0a1850, emissiveIntensity: 0.5, roughness: 0.5 }));
+        sign.position.y = 2.35; ob.add(sign);
+        var stripe = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.16, 0.32), new THREE.MeshBasicMaterial({ color: 0xffe24a })); stripe.position.y = 2.05; ob.add(stripe);
+      } else {
+        // full shipping container  ->  CHANGE LANE
+        var body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.8, 1.1), new THREE.MeshStandardMaterial({ color: 0xc0392b, emissive: 0x200806, emissiveIntensity: 0.25, metalness: 0.4, roughness: 0.6 }));
+        body.position.y = 1.4; ob.add(body);
+        for (var rx = -0.7; rx <= 0.7; rx += 0.35) { var rib = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.6, 0.06), new THREE.MeshStandardMaterial({ color: 0x7a241b })); rib.position.set(rx, 1.4, 0.56); ob.add(rib); }
+        var topbar = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.2, 1.15), new THREE.MeshStandardMaterial({ color: 0x8a2c20 })); topbar.position.y = 2.8; ob.add(topbar);
+      }
+      ob.position.set(LANES[l], 0, z);
+      ob.userData = { lane: l, type: type };
       scene.add(ob); obstacles.push(ob);
     }
     function spawnCoinRow(z) {
@@ -863,44 +882,43 @@
       var belly = ball(0.36, hoodie); belly.scale.set(0.96, 0.72, 0.6); belly.position.set(0, 2.06, 0.0); g.add(belly);
       var pocket = box(0.52, 0.24, 0.1, hoodieDk); pocket.position.set(0, 1.95, 0.3); g.add(pocket);
       var zip = box(0.05, 0.95, 0.05, hoodieDk); zip.position.set(0, 2.2, 0.33); g.add(zip);
-      var hood = ball(0.3, hoodieDk); hood.scale.set(1.25, 0.85, 0.7); hood.position.set(0, 2.78, -0.2); g.add(hood);
-      var collar = cyl(0.27, 0.33, 0.18, hoodieDk); collar.position.y = 2.66; collar.scale.z = 0.85; g.add(collar);
+      var hood = ball(0.28, hoodieDk); hood.scale.set(1.25, 0.85, 0.7); hood.position.set(0, 2.62, -0.18); g.add(hood);
+      var collar = cyl(0.22, 0.28, 0.16, hoodieDk); collar.position.y = 2.52; collar.scale.z = 0.85; g.add(collar);
       [-0.07, 0.07].forEach(function (x) { var ds = cyl(0.022, 0.022, 0.32, white); ds.position.set(x, 2.46, 0.3); g.add(ds); var k = ball(0.035, white); k.position.set(x, 2.3, 0.3); g.add(k); });
 
-      // ---- neck + head (rounded, human) ----
-      var neck = cyl(0.11, 0.13, 0.18, skin); neck.position.y = 2.76; g.add(neck);
-      var head = ball(0.3, skin); head.scale.set(0.9, 1.08, 0.95); head.position.y = 3.05; g.add(head);
-      var jaw = ball(0.24, skin); jaw.scale.set(0.95, 0.82, 0.95); jaw.position.set(0, 2.92, 0.03); g.add(jaw);
-      var nose = ball(0.05, skin); nose.scale.set(0.8, 1, 1.5); nose.position.set(0, 3.0, 0.3); g.add(nose);
-      [-1, 1].forEach(function (s) { var ear = ball(0.06, skin); ear.scale.set(0.6, 1, 1); ear.position.set(s * 0.28, 3.04, 0.02); g.add(ear); });
-      // eyes set into the face
-      [-0.12, 0.12].forEach(function (x) {
-        var socket = ball(0.07, skinDk); socket.scale.set(1, 0.7, 0.4); socket.position.set(x, 3.07, 0.25); g.add(socket);
-        var w = ball(0.05, white); w.scale.set(1.1, 0.9, 0.6); w.position.set(x, 3.07, 0.27); g.add(w);
-        var iris = ball(0.028, dark); iris.position.set(x, 3.07, 0.3); g.add(iris);
-        var brow = box(0.13, 0.03, 0.05, hair); brow.position.set(x, 3.16, 0.27); brow.rotation.z = x > 0 ? -0.1 : 0.1; g.add(brow);
+      // ---- neck + head (anthropometric: head ~ 1/7.5 of total height) ----
+      var neck = cyl(0.1, 0.12, 0.16, skin); neck.position.y = 2.56; g.add(neck);
+      var head = ball(0.2, skin); head.scale.set(0.92, 1.12, 0.98); head.position.y = 2.84; g.add(head);
+      var jaw = ball(0.16, skin); jaw.scale.set(0.95, 0.8, 0.92); jaw.position.set(0, 2.72, 0.02); g.add(jaw);
+      var nose = ball(0.035, skin); nose.scale.set(0.8, 1, 1.5); nose.position.set(0, 2.82, 0.2); g.add(nose);
+      [-1, 1].forEach(function (s) { var ear = ball(0.04, skin); ear.scale.set(0.6, 1.1, 1); ear.position.set(s * 0.19, 2.83, 0.0); g.add(ear); });
+      [-0.08, 0.08].forEach(function (x) {
+        var socket = ball(0.045, skinDk); socket.scale.set(1, 0.7, 0.4); socket.position.set(x, 2.85, 0.16); g.add(socket);
+        var w = ball(0.032, white); w.scale.set(1.1, 0.9, 0.6); w.position.set(x, 2.85, 0.17); g.add(w);
+        var iris = ball(0.018, dark); iris.position.set(x, 2.85, 0.19); g.add(iris);
+        var brow = box(0.085, 0.02, 0.04, hair); brow.position.set(x, 2.91, 0.17); brow.rotation.z = x > 0 ? -0.1 : 0.1; g.add(brow);
       });
-      var mouth = box(0.13, 0.03, 0.04, skinDk); mouth.position.set(0, 2.9, 0.28); g.add(mouth);
+      var mouth = box(0.08, 0.02, 0.03, skinDk); mouth.position.set(0, 2.74, 0.18); g.add(mouth);
 
-      // ---- poofy layered hair with depth (dark roots, mid body, light highlights) ----
+      // ---- poofy layered hair with depth ----
       var hairLt = ms(0x3a2a1c, 0.8), hairDk = ms(0x140d09, 0.85);
       function tuft(x, y, z, r, m, sx, sy, sz) { var t = ball(r, m); t.scale.set(sx || 1, sy || 1, sz || 1); t.position.set(x, y, z); g.add(t); }
-      tuft(0, 3.18, -0.02, 0.33, hairDk, 1.05, 0.95, 1.08);            // dark scalp base (depth)
-      tuft(0, 3.0, -0.3, 0.16, hairDk, 1.2, 0.9, 0.8);                 // back volume
-      tuft(-0.26, 3.05, -0.1, 0.13, hairDk, 0.9, 1.2, 1);
-      tuft(0.26, 3.05, -0.1, 0.13, hairDk, 0.9, 1.2, 1);
-      tuft(0, 3.32, -0.04, 0.28, hair, 1.2, 0.95, 1.1);               // main poof
-      tuft(-0.16, 3.28, 0.04, 0.2, hair, 1, 1, 1);
-      tuft(0.16, 3.28, 0.04, 0.2, hair, 1, 1, 1);
-      tuft(0, 3.3, -0.22, 0.22, hair, 1.1, 0.95, 0.9);
-      tuft(-0.22, 3.18, -0.06, 0.16, hair, 1, 1.1, 1);
-      tuft(0.22, 3.18, -0.06, 0.16, hair, 1, 1.1, 1);
-      tuft(-0.1, 3.22, 0.24, 0.1, hair, 1.4, 0.7, 0.8);               // fringe over forehead
-      tuft(0.1, 3.22, 0.24, 0.1, hair, 1.4, 0.7, 0.8);
-      tuft(-0.08, 3.4, 0.02, 0.14, hairLt, 1.1, 0.9, 1);             // light highlights on top
-      tuft(0.12, 3.38, -0.02, 0.13, hairLt, 1.1, 0.9, 1);
-      tuft(0, 3.45, -0.08, 0.12, hairLt, 1.2, 0.8, 1);
-      tuft(0, 3.25, 0.26, 0.09, hairLt, 1.5, 0.6, 0.7);
+      tuft(0, 2.92, -0.01, 0.21, hairDk, 1.05, 0.95, 1.08);
+      tuft(0, 2.82, -0.2, 0.11, hairDk, 1.2, 0.9, 0.8);
+      tuft(-0.17, 2.85, -0.06, 0.09, hairDk, 0.9, 1.2, 1);
+      tuft(0.17, 2.85, -0.06, 0.09, hairDk, 0.9, 1.2, 1);
+      tuft(0, 3.0, -0.03, 0.18, hair, 1.2, 0.95, 1.1);
+      tuft(-0.11, 2.97, 0.03, 0.13, hair, 1, 1, 1);
+      tuft(0.11, 2.97, 0.03, 0.13, hair, 1, 1, 1);
+      tuft(0, 2.98, -0.15, 0.14, hair, 1.1, 0.95, 0.9);
+      tuft(-0.15, 2.9, -0.04, 0.1, hair, 1, 1.1, 1);
+      tuft(0.15, 2.9, -0.04, 0.1, hair, 1, 1.1, 1);
+      tuft(-0.07, 2.93, 0.16, 0.07, hair, 1.4, 0.7, 0.8);
+      tuft(0.07, 2.93, 0.16, 0.07, hair, 1.4, 0.7, 0.8);
+      tuft(-0.05, 3.06, 0.02, 0.09, hairLt, 1.1, 0.9, 1);
+      tuft(0.08, 3.05, -0.01, 0.085, hairLt, 1.1, 0.9, 1);
+      tuft(0, 3.09, -0.05, 0.08, hairLt, 1.2, 0.8, 1);
+      tuft(0, 2.95, 0.17, 0.06, hairLt, 1.5, 0.6, 0.7);
 
       // ---- separated, jointed arm: shoulder > upper > elbow > forearm > cuff > hand ----
       function armGroup() {
@@ -1057,6 +1075,7 @@
         if (e.code === "ArrowLeft" || e.code === "KeyA") move(-1);
         else if (e.code === "ArrowRight" || e.code === "KeyD") move(1);
         else if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") jump();
+        else if (e.code === "ArrowDown" || e.code === "KeyS") slide();
       });
       var sx = 0, sy = 0, touching = false;
       window.addEventListener("touchstart", function (e) { touching = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
@@ -1065,7 +1084,7 @@
         touching = false;
         var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
         if (Math.abs(dx) > Math.abs(dy)) { if (Math.abs(dx) > 24) move(dx > 0 ? 1 : -1); }
-        else { if (dy < -24) jump(); }
+        else { if (dy < -24) jump(); else if (dy > 24) slide(); }
       }, { passive: true });
 
       $("startBtn").addEventListener("click", startGame);
@@ -1093,6 +1112,7 @@
       updateCharName();
     }
     function move(dir) { lane = Math.max(0, Math.min(2, lane + dir)); targetX = LANES[lane]; }
+    function slide() { if (!grounded || sliding) return; sliding = true; slideT = 0.55; }
     function jump() {
       if (!grounded) return;
       vy = jumpV; grounded = false;
@@ -1274,6 +1294,7 @@
     // ---------- Flow ----------
     function startGame() {
       lane = 1; targetX = 0; vy = 0; grounded = true;
+      sliding = false; slideT = 0;
       speed = BASE_SPEED; distance = 0; coinCount = 0; score = 0;
       player.position.set(0, 0, 1);
       obstacles.forEach(function (o) { scene.remove(o); }); obstacles = [];
@@ -1348,6 +1369,7 @@
         player.position.y = 0; vy = 0; grounded = true;
       }
       if (invuln > 0) invuln -= dt;
+      if (sliding) { slideT -= dt; if (slideT <= 0) sliding = false; }
 
       // bouncy run cycle (Subway-Surfers feel)
       if (mixer) {
@@ -1365,6 +1387,7 @@
           playerVisual.rotation.x = grounded ? 0.1 : 0.22;                   // lean / tuck
           playerVisual.rotation.z = Math.sin(runT) * 0.06;                   // body sway
         }
+        if (sliding && playerVisual) { playerVisual.position.y = -0.18; playerVisual.rotation.x = 0.75; }
       }
       player.rotation.y = (targetX - player.position.x) * -0.25;
 
@@ -1411,7 +1434,10 @@
       for (var i = 0; i < obstacles.length; i++) {
         var o = obstacles[i];
         if (Math.abs(o.position.z - pz) < 0.9 && o.userData.lane === lane) {
-          var hit = o.userData.low ? (player.position.y < 1.4) : true;
+          var t = o.userData.type;
+          var hit = t === "jump" ? (player.position.y < 1.4)      // must jump over
+                  : t === "slide" ? (!sliding)                     // must slide under
+                  : true;                                          // block: change lane
           if (hit) {
             if (invuln > 0) { /* safe */ }
             else if (shieldArmed) { shieldArmed = false; setShieldBubble(false); invuln = 1.0; o.position.z = 60; }
@@ -1500,8 +1526,8 @@
       else if(i===3) bass808(nextT, ROOTS[b], stepDur*1.5);
       else if(i===5) bass808(nextT, ROOTS[b], stepDur*2);
       bell(nextT, MEL[b][i]);
-      if(i===2) voxChop(nextT, VOWELS[b%4], 175, stepDur*1.7);
-      if(i===6) voxChop(nextT, VOWELS[(b+2)%4], 146, stepDur*1.5);
+      if(i===2) voxChop(nextT, VOWELS[b%4], ROOTS[b]*3.2, stepDur*1.7);
+      if(i===6) voxChop(nextT, VOWELS[(b+2)%4], ROOTS[b]*2.4, stepDur*1.5);
       nextT += stepDur; step++;
       if(i===STEPS-1) bar++;
     }

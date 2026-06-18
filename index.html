@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.4</div>
+  <div id="version">v4.5</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -807,30 +807,48 @@
 
       // ---- torso: hoodie ----
       var torso = cyl(0.42, 0.34, 0.95, hoodie); torso.position.y = 2.18; torso.scale.z = 0.78; g.add(torso);
-      var chest = box(0.78, 0.55, 0.42, hoodie); chest.position.y = 2.42; g.add(chest);
+      var upperT = ball(0.42, hoodie); upperT.scale.set(0.96, 0.72, 0.62); upperT.position.set(0, 2.46, 0.0); g.add(upperT);
+      var belly = ball(0.36, hoodie); belly.scale.set(0.96, 0.72, 0.6); belly.position.set(0, 2.06, 0.0); g.add(belly);
       var pocket = box(0.52, 0.24, 0.1, hoodieDk); pocket.position.set(0, 1.95, 0.3); g.add(pocket);
       var zip = box(0.05, 0.95, 0.05, hoodieDk); zip.position.set(0, 2.2, 0.33); g.add(zip);
       var hood = ball(0.3, hoodieDk); hood.scale.set(1.25, 0.85, 0.7); hood.position.set(0, 2.78, -0.2); g.add(hood);
       var collar = cyl(0.27, 0.33, 0.18, hoodieDk); collar.position.y = 2.66; collar.scale.z = 0.85; g.add(collar);
       [-0.07, 0.07].forEach(function (x) { var ds = cyl(0.022, 0.022, 0.32, white); ds.position.set(x, 2.46, 0.3); g.add(ds); var k = ball(0.035, white); k.position.set(x, 2.3, 0.3); g.add(k); });
 
-      // ---- neck + head ----
-      var neck = cyl(0.12, 0.14, 0.16, skin); neck.position.y = 2.74; g.add(neck);
-      var head = ball(0.32, skin); head.scale.set(0.92, 1.05, 0.96); head.position.y = 3.04; g.add(head);
-      var jaw = box(0.34, 0.2, 0.34, skin); jaw.position.set(0, 2.88, 0.02); g.add(jaw);
-      [-1, 1].forEach(function (s) { var ear = ball(0.07, skin); ear.position.set(s * 0.3, 3.02, 0); g.add(ear); });
-      // face
-      [-0.13, 0.13].forEach(function (x) {
-        var w = ball(0.066, white); w.scale.set(1, 1.2, 0.5); w.position.set(x, 3.06, 0.28); g.add(w);
-        var p = ball(0.034, dark); p.position.set(x, 3.06, 0.31); g.add(p);
-        var brow = box(0.12, 0.03, 0.04, hair); brow.position.set(x, 3.15, 0.29); g.add(brow);
+      // ---- neck + head (rounded, human) ----
+      var neck = cyl(0.11, 0.13, 0.18, skin); neck.position.y = 2.76; g.add(neck);
+      var head = ball(0.3, skin); head.scale.set(0.9, 1.08, 0.95); head.position.y = 3.05; g.add(head);
+      var jaw = ball(0.24, skin); jaw.scale.set(0.95, 0.82, 0.95); jaw.position.set(0, 2.92, 0.03); g.add(jaw);
+      var nose = ball(0.05, skin); nose.scale.set(0.8, 1, 1.5); nose.position.set(0, 3.0, 0.3); g.add(nose);
+      [-1, 1].forEach(function (s) { var ear = ball(0.06, skin); ear.scale.set(0.6, 1, 1); ear.position.set(s * 0.28, 3.04, 0.02); g.add(ear); });
+      // eyes set into the face
+      [-0.12, 0.12].forEach(function (x) {
+        var socket = ball(0.07, skinDk); socket.scale.set(1, 0.7, 0.4); socket.position.set(x, 3.07, 0.25); g.add(socket);
+        var w = ball(0.05, white); w.scale.set(1.1, 0.9, 0.6); w.position.set(x, 3.07, 0.27); g.add(w);
+        var iris = ball(0.028, dark); iris.position.set(x, 3.07, 0.3); g.add(iris);
+        var brow = box(0.13, 0.03, 0.05, hair); brow.position.set(x, 3.16, 0.27); brow.rotation.z = x > 0 ? -0.1 : 0.1; g.add(brow);
       });
-      var nose = box(0.07, 0.1, 0.08, skinDk); nose.position.set(0, 2.99, 0.31); g.add(nose);
-      var mouth = box(0.14, 0.025, 0.04, skinDk); mouth.position.set(0, 2.88, 0.29); g.add(mouth);
-      // hair + cap
-      var hairCap = ball(0.34, hair); hairCap.scale.set(1.0, 0.85, 1.02); hairCap.position.set(0, 3.16, -0.02); g.add(hairCap);
-      var cap = ball(0.36, accent); cap.scale.set(1.02, 0.6, 1.04); cap.position.set(0, 3.26, -0.02); g.add(cap);
-      var brim = box(0.46, 0.06, 0.3, accent); brim.position.set(0, 3.2, 0.32); g.add(brim);
+      var mouth = box(0.13, 0.03, 0.04, skinDk); mouth.position.set(0, 2.9, 0.28); g.add(mouth);
+
+      // ---- poofy layered hair with depth (dark roots, mid body, light highlights) ----
+      var hairLt = ms(0x3a2a1c, 0.8), hairDk = ms(0x140d09, 0.85);
+      function tuft(x, y, z, r, m, sx, sy, sz) { var t = ball(r, m); t.scale.set(sx || 1, sy || 1, sz || 1); t.position.set(x, y, z); g.add(t); }
+      tuft(0, 3.18, -0.02, 0.33, hairDk, 1.05, 0.95, 1.08);            // dark scalp base (depth)
+      tuft(0, 3.0, -0.3, 0.16, hairDk, 1.2, 0.9, 0.8);                 // back volume
+      tuft(-0.26, 3.05, -0.1, 0.13, hairDk, 0.9, 1.2, 1);
+      tuft(0.26, 3.05, -0.1, 0.13, hairDk, 0.9, 1.2, 1);
+      tuft(0, 3.32, -0.04, 0.28, hair, 1.2, 0.95, 1.1);               // main poof
+      tuft(-0.16, 3.28, 0.04, 0.2, hair, 1, 1, 1);
+      tuft(0.16, 3.28, 0.04, 0.2, hair, 1, 1, 1);
+      tuft(0, 3.3, -0.22, 0.22, hair, 1.1, 0.95, 0.9);
+      tuft(-0.22, 3.18, -0.06, 0.16, hair, 1, 1.1, 1);
+      tuft(0.22, 3.18, -0.06, 0.16, hair, 1, 1.1, 1);
+      tuft(-0.1, 3.22, 0.24, 0.1, hair, 1.4, 0.7, 0.8);               // fringe over forehead
+      tuft(0.1, 3.22, 0.24, 0.1, hair, 1.4, 0.7, 0.8);
+      tuft(-0.08, 3.4, 0.02, 0.14, hairLt, 1.1, 0.9, 1);             // light highlights on top
+      tuft(0.12, 3.38, -0.02, 0.13, hairLt, 1.1, 0.9, 1);
+      tuft(0, 3.45, -0.08, 0.12, hairLt, 1.2, 0.8, 1);
+      tuft(0, 3.25, 0.26, 0.09, hairLt, 1.5, 0.6, 0.7);
 
       // ---- separated, jointed arm: shoulder > upper > elbow > forearm > cuff > hand ----
       function armGroup() {

@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.5</div>
+  <div id="version">v4.7</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -371,11 +371,18 @@
       scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 0.8, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9 })));
 
       var roadMat = new THREE.MeshStandardMaterial({ color: 0x0a0d13, metalness: 0.75, roughness: 0.35 });
+      var paveMat = new THREE.MeshStandardMaterial({ color: 0x0c1018, metalness: 0.1, roughness: 0.95 });
+      var paveMat2 = new THREE.MeshStandardMaterial({ color: 0x10151f, metalness: 0.1, roughness: 0.95 });
       var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();
         var road = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, SEG), roadMat);
         road.position.y = -0.2; tile.add(road);
+        // wide ground the whole city sits on (sidewalks both sides), scrolls with the tile
+        var pave = new THREE.Mesh(new THREE.BoxGeometry(120, 0.3, SEG), paveMat); pave.position.y = -0.35; tile.add(pave);
+        [-9, 9].forEach(function (px) { var walk = new THREE.Mesh(new THREE.BoxGeometry(8, 0.34, SEG), paveMat2); walk.position.set(px, -0.28, 0); tile.add(walk); });
+        var curbL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbL.position.set(-4.8, -0.1, 0); tile.add(curbL);
+        var curbR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbR.position.set(4.8, -0.1, 0); tile.add(curbR);
         [-1.2, 1.2].forEach(function (x) {
           var strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, SEG * 0.55), glowMat);
           strip.position.set(x, 0.02, 0); tile.add(strip);
@@ -786,7 +793,7 @@
     }
 
     // ---------- Subway-Surfers-style cartoon human runner ----------
-    function buildHumanRunner(def) {
+    function buildHumanRunner(def, forThumb) {
       var g = new THREE.Group();
       function shade(c, f) { var r = Math.min(255, ((c >> 16) & 255) * f | 0), gg = Math.min(255, ((c >> 8) & 255) * f | 0), bb = Math.min(255, (c & 255) * f | 0); return (r << 16) | (gg << 8) | bb; }
       function ms(c, r, m) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.0 : m }); }
@@ -878,20 +885,22 @@
         return l;
       }
 
-      playerArmL = armGroup(); playerArmL.position.set(-0.52, 2.5, 0);
-      playerArmR = armGroup(); playerArmR.position.set(0.52, 2.5, 0);
-      playerLegL = legGroup(); playerLegL.position.set(-0.2, 1.4, 0);
-      playerLegR = legGroup(); playerLegR.position.set(0.2, 1.4, 0);
-      g.add(playerArmL, playerArmR, playerLegL, playerLegR);
+      var aL = armGroup(); aL.position.set(-0.52, 2.5, 0);
+      var aR = armGroup(); aR.position.set(0.52, 2.5, 0);
+      var lL = legGroup(); lL.position.set(-0.2, 1.4, 0);
+      var lR = legGroup(); lR.position.set(0.2, 1.4, 0);
+      g.add(aL, aR, lL, lR);
 
       addAccessory(g, def, 3.05);        // per-character signature gear
       g.scale.setScalar(def.scale || 1);
+      if (forThumb) return g;
+      playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
     }
 
     // ---------- Original anime runner: cel-shaded, white hair, cracked mask ----------
-    function buildAnimeRunner(def) {
+    function buildAnimeRunner(def, forThumb) {
       var g = new THREE.Group();
 
       // toon (cel) gradient so shading is flat & anime-like
@@ -965,13 +974,15 @@
         var bt = box(0.2, 0.16, 0.42, coatHi); bt.position.set(0, -1.16, 0.08); l.add(bt);
         return l;
       }
-      playerArmL = armPart(); playerArmL.position.set(-0.52, 2.46, 0);
-      playerArmR = armPart(); playerArmR.position.set(0.52, 2.46, 0);
-      playerLegL = legPart(); playerLegL.position.set(-0.22, 1.28, 0);
-      playerLegR = legPart(); playerLegR.position.set(0.22, 1.28, 0);
-      g.add(playerArmL, playerArmR, playerLegL, playerLegR);
+      var aL = armPart(); aL.position.set(-0.52, 2.46, 0);
+      var aR = armPart(); aR.position.set(0.52, 2.46, 0);
+      var lL = legPart(); lL.position.set(-0.22, 1.28, 0);
+      var lR = legPart(); lR.position.set(0.22, 1.28, 0);
+      g.add(aL, aR, lL, lR);
 
       g.scale.setScalar(def.scale || 1);
+      if (forThumb) return g;
+      playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
     }
@@ -1113,6 +1124,35 @@
         '</svg>';
     }
 
+    // ---- real 3D character thumbnails for the shop ----
+    var thumbR = null, thumbScene = null, thumbCam = null, thumbCurrent = null, thumbCache = {};
+    function initThumb() {
+      thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      thumbR.setSize(150, 200); thumbR.setPixelRatio(1);
+      if (THREE.sRGBEncoding) thumbR.outputEncoding = THREE.sRGBEncoding;
+      if (THREE.ACESFilmicToneMapping) { thumbR.toneMapping = THREE.ACESFilmicToneMapping; thumbR.toneMappingExposure = 1.25; }
+      thumbScene = new THREE.Scene();
+      thumbScene.add(new THREE.HemisphereLight(0x9fb0d0, 0x202028, 1.0));
+      var dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(-3, 6, 6); thumbScene.add(dl);
+      var dl2 = new THREE.DirectionalLight(0x88aaff, 0.5); dl2.position.set(4, 2, -3); thumbScene.add(dl2);
+      thumbCam = new THREE.PerspectiveCamera(38, 150 / 200, 0.1, 100);
+      thumbCam.position.set(0.7, 1.9, 6.4); thumbCam.lookAt(0, 1.5, 0);
+    }
+    function thumbURL(def) {
+      if (thumbCache[def.id]) return thumbCache[def.id];
+      try {
+        if (!thumbR) initThumb();
+        if (thumbCurrent) { thumbScene.remove(thumbCurrent); thumbCurrent = null; }
+        var g = def.anime ? buildAnimeRunner(def, true) : buildHumanRunner(def, true);
+        g.rotation.y = 0;                       // front 3/4 view, same model as in-game
+        thumbCurrent = g; thumbScene.add(g);
+        thumbR.render(thumbScene, thumbCam);
+        var url = thumbR.domElement.toDataURL("image/png");
+        thumbCache[def.id] = url;
+        return url;
+      } catch (e) { return ""; }
+    }
+
     function buildShopGrid() {
       var grid = $("shopGrid"); grid.innerHTML = "";      CHARACTERS.forEach(function (def) {
         var owned = save.owned.indexOf(def.id) >= 0;
@@ -1124,7 +1164,8 @@
         var sw = document.createElement("div");
         sw.className = "figure";
         sw.style.color = hex(def.neon);
-        sw.innerHTML = figureSVG(def);
+        var url = thumbURL(def);
+        sw.innerHTML = url ? '<img src="' + url + '" alt="' + def.name + '" style="width:100%;height:auto;display:block;"/>' : figureSVG(def);
         card.appendChild(sw);
 
         var nm = document.createElement("div");
@@ -1267,16 +1308,17 @@
       if (mixer) {
         mixer.update(dt);
       } else {
-        var amp = grounded ? 0.95 : 0.35;
-        var s = Math.sin(runT);
-        if (playerLegL) playerLegL.rotation.x = s * amp;
-        if (playerLegR) playerLegR.rotation.x = -s * amp;
-        if (playerArmL) playerArmL.rotation.x = -s * amp * 0.9;
-        if (playerArmR) playerArmR.rotation.x = s * amp * 0.9;
+        var amp = grounded ? 1.05 : 0.4;
+        var s = Math.sin(runT), s2 = Math.cos(runT);
+        if (playerLegL) { playerLegL.rotation.x = s * amp; playerLegL.rotation.z = 0.05; }
+        if (playerLegR) { playerLegR.rotation.x = -s * amp; playerLegR.rotation.z = -0.05; }
+        if (playerArmL) { playerArmL.rotation.x = -s * amp * 0.95; playerArmL.rotation.z = 0.14 + s2 * 0.06; }
+        if (playerArmR) { playerArmR.rotation.x = s * amp * 0.95; playerArmR.rotation.z = -0.14 - s2 * 0.06; }
         if (playerVisual) {
           playerVisual.rotation.y = Math.PI;                                 // face forward, into the screen
-          playerVisual.position.y = grounded ? Math.abs(Math.sin(runT)) * 0.13 : 0.0;
-          playerVisual.rotation.x = grounded ? 0.08 : 0.18;                  // lean into the run / tuck in air
+          playerVisual.position.y = grounded ? Math.abs(Math.sin(runT)) * 0.17 : 0.0;  // bigger bounce
+          playerVisual.rotation.x = grounded ? 0.1 : 0.22;                   // lean / tuck
+          playerVisual.rotation.z = Math.sin(runT) * 0.06;                   // body sway
         }
       }
       player.rotation.y = (targetX - player.position.x) * -0.25;
@@ -1369,7 +1411,7 @@
 (function () {
   var actx = null, master = null, comp = null, on = true, started = false;
   var step = 0, bar = 0, nextT = 0, timer = null, btn = null;
-  var BPM = 150, STEPS = 8, stepDur = 60 / BPM / 2;
+  var BPM = 156, STEPS = 8, stepDur = 60 / BPM / 2;
 
   function distCurve(k){ var n=2048,c=new Float32Array(n); for(var i=0;i<n;i++){var x=i*2/n-1; c[i]=(3+k)*x*20*Math.PI/180/(Math.PI+k*Math.abs(x));} return c; }
   var DIST=null;
@@ -1380,17 +1422,17 @@
   function snare(t){ var s=actx.createBufferSource(); s.buffer=noiseBuf(0.2); var f=actx.createBiquadFilter(); f.type="highpass"; f.frequency.value=1400; var g=actx.createGain(); env(g,t,0.001,0.18,0.45); s.connect(f); f.connect(g); g.connect(master); s.start(t);
     var o=actx.createOscillator(),og=actx.createGain(); o.type="triangle"; o.frequency.setValueAtTime(180,t); env(og,t,0.001,0.12,0.25); o.connect(og); og.connect(master); o.start(t); o.stop(t+0.14); }
   function hat(t,open){ var s=actx.createBufferSource(); s.buffer=noiseBuf(open?0.18:0.05); var f=actx.createBiquadFilter(); f.type="highpass"; f.frequency.value=8200; var g=actx.createGain(); env(g,t,0.001,open?0.15:0.04,0.16); s.connect(f); f.connect(g); g.connect(master); s.start(t); }
-  function bass808(t,freq,dur){ var o=actx.createOscillator(),g=actx.createGain(),ws=actx.createWaveShaper(); ws.curve=DIST; o.type="triangle"; o.frequency.setValueAtTime(freq*1.5,t); o.frequency.exponentialRampToValueAtTime(freq,t+0.06); env(g,t,0.005,dur,0.85); o.connect(ws); ws.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.06); }
-  function bell(t,freq){ if(!freq)return; var o1=actx.createOscillator(),o2=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter(); o1.type="square"; o2.type="square"; o1.frequency.value=freq; o2.frequency.value=freq*1.005; f.type="bandpass"; f.frequency.value=freq*1.2; f.Q.value=4.5; env(g,t,0.002,0.17,0.11); o1.connect(f); o2.connect(f); f.connect(g); g.connect(master); o1.start(t); o2.start(t); o1.stop(t+0.2); o2.stop(t+0.2); }
+  function bass808(t,freq,dur){ var o=actx.createOscillator(),g=actx.createGain(),ws=actx.createWaveShaper(); ws.curve=DIST; o.type="triangle"; o.frequency.setValueAtTime(freq*1.5,t); o.frequency.exponentialRampToValueAtTime(freq,t+0.06); env(g,t,0.004,dur*1.15,1.05); o.connect(ws); ws.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.1); }
+  function bell(t,freq){ if(!freq)return; var o1=actx.createOscillator(),o2=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter(); o1.type="square"; o2.type="square"; o1.frequency.value=freq; o2.frequency.value=freq*1.005; f.type="bandpass"; f.frequency.value=freq*1.2; f.Q.value=4.5; env(g,t,0.002,0.2,0.22); f.Q.value=7; o1.connect(f); o2.connect(f); f.connect(g); g.connect(master); o1.start(t); o2.start(t); o1.stop(t+0.22); o2.stop(t+0.22); }
 
   // 4-bar dark progression in A minor (808 roots) + cowbell melody
   var ROOTS=[55.00,43.65,65.41,49.00]; // A1 F1 C2 G1  (i - VI - III - VII)
-  var A4=440,C5=523.25,D5=587.33,E5=659.25,G5=783.99;
+  var A3=220,C4=261.63,D4=293.66,E4=329.63,G4=392.00,A4=440,C5=523.25,E5=659.25;
   var MEL=[
-    [A4,0,C5,0,E5,0,D5,C5],
-    [0,A4,0,C5,D5,0,C5,0],
-    [C5,0,E5,G5,0,E5,0,D5],
-    [0,D5,0,C5,A4,0,C5,E5]
+    [A4,A4,0,C5,A4,0,E4,G4],
+    [A4,0,G4,A4,0,C5,0,E4],
+    [C5,0,A4,C5,A4,0,G4,E4],
+    [E4,0,D4,E4,G4,0,A4,C5]
   ];
   var KICK=[1,0,1,1,0,1,1,0], SNARE=[0,0,0,0,1,0,0,1], HAT=[1,1,1,1,1,1,1,1];
 
@@ -1401,16 +1443,17 @@
       if(KICK[i]) kick(nextT);
       if(SNARE[i]) snare(nextT);
       if(HAT[i]) hat(nextT, i===7);
-      if(i===0) bass808(nextT, ROOTS[b], stepDur*4);
+      if(i===0) bass808(nextT, ROOTS[b], stepDur*3);
+      else if(i===3) bass808(nextT, ROOTS[b], stepDur*1.5);
       else if(i===5) bass808(nextT, ROOTS[b], stepDur*2);
       bell(nextT, MEL[b][i]);
       nextT += stepDur; step++;
       if(i===STEPS-1) bar++;
     }
   }
-  function ensure(){ if(actx)return; var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; actx=new AC(); DIST=distCurve(16); comp=actx.createDynamicsCompressor(); master=actx.createGain(); master.gain.value=0.0001; master.connect(comp); comp.connect(actx.destination); }
-  function start(){ ensure(); if(!actx)return; if(actx.state==="suspended")actx.resume(); if(!started){started=true; nextT=actx.currentTime+0.06; timer=setInterval(schedule,40);} master.gain.setTargetAtTime(on?0.45:0.0001, actx.currentTime, 0.3); }
-  function toggle(){ on=!on; if(master)master.gain.setTargetAtTime(on?0.45:0.0001, actx.currentTime, 0.1); if(btn)btn.textContent=on?"🔊 phonk":"🔇 phonk"; }
+  function ensure(){ if(actx)return; var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; actx=new AC(); DIST=distCurve(24); comp=actx.createDynamicsCompressor(); master=actx.createGain(); master.gain.value=0.0001; master.connect(comp); comp.connect(actx.destination); }
+  function start(){ ensure(); if(!actx)return; if(actx.state==="suspended")actx.resume(); if(!started){started=true; nextT=actx.currentTime+0.06; timer=setInterval(schedule,40);} master.gain.setTargetAtTime(on?0.55:0.0001, actx.currentTime, 0.25); }
+  function toggle(){ on=!on; if(master)master.gain.setTargetAtTime(on?0.55:0.0001, actx.currentTime, 0.1); if(btn)btn.textContent=on?"🔊 phonk":"🔇 phonk"; }
 
   function kickoff(){ start(); }
   ["pointerdown","touchstart","keydown"].forEach(function(ev){ window.addEventListener(ev, kickoff); });

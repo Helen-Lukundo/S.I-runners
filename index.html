@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.2</div>
+  <div id="version">v4.4</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -788,41 +788,85 @@
     // ---------- Subway-Surfers-style cartoon human runner ----------
     function buildHumanRunner(def) {
       var g = new THREE.Group();
-      var hoodie = new THREE.MeshStandardMaterial({ color: def.neon, roughness: 0.85, metalness: 0.0 });
-      var pants  = new THREE.MeshStandardMaterial({ color: def.body, roughness: 0.9, metalness: 0.0 });
-      var skin   = new THREE.MeshStandardMaterial({ color: 0xf2c49a, roughness: 0.9, metalness: 0.0 });
-      var shoe   = new THREE.MeshStandardMaterial({ color: 0xf2f2f5, roughness: 0.7, metalness: 0.0 });
-      var accent = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1, emissive: def.accent, emissiveIntensity: 0.15 });
-      var dark   = new THREE.MeshStandardMaterial({ color: 0x222230, roughness: 0.9 });
-      var white  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-      function box(w,h,d,m){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m); }
-      function cyl(rt,rb,h,m){ return new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,16), m); }
-      function ball(r,m){ return new THREE.Mesh(new THREE.SphereGeometry(r,18,18), m); }
+      function shade(c, f) { var r = Math.min(255, ((c >> 16) & 255) * f | 0), gg = Math.min(255, ((c >> 8) & 255) * f | 0), bb = Math.min(255, (c & 255) * f | 0); return (r << 16) | (gg << 8) | bb; }
+      function ms(c, r, m) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.0 : m }); }
+      var hoodie = ms(def.neon, 0.82), hoodieDk = ms(shade(def.neon, 0.6), 0.85),
+          pants = ms(shade(def.body, 2.6), 0.9), pantsDk = ms(shade(def.body, 1.8), 0.92),
+          skin = ms(0xf0c49a, 0.9), skinDk = ms(0xd9a878, 0.9),
+          shoe = ms(def.accent, 0.6, 0.1), sole = ms(0xf2f2f5, 0.7), hair = ms(0x241a16, 0.85),
+          dark = ms(0x1a1a22, 0.8), white = ms(0xf4f4f7, 0.6),
+          accent = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1, emissive: def.accent, emissiveIntensity: 0.12 });
+      function box(w, h, d, m) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); }
+      function cyl(rt, rb, h, m) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 14), m); }
+      function ball(r, m) { return new THREE.Mesh(new THREE.SphereGeometry(r, 16, 14), m); }
 
-      var hips = box(0.78, 0.4, 0.5, pants); hips.position.y = 1.34; g.add(hips);
-      var torso = box(0.92, 1.05, 0.56, hoodie); torso.position.y = 2.02; g.add(torso);
-      var hood = ball(0.34, hoodie); hood.scale.set(1.1, 0.8, 0.7); hood.position.set(0, 2.55, -0.22); g.add(hood);
-      var pocket = box(0.5, 0.26, 0.06, accent); pocket.position.set(0, 1.78, 0.29); g.add(pocket);
-      var zip = box(0.05, 0.9, 0.06, accent); zip.position.set(0, 2.05, 0.29); g.add(zip);
-      var shL = ball(0.22, hoodie); shL.position.set(-0.56, 2.45, 0); g.add(shL);
-      var shR = ball(0.22, hoodie); shR.position.set(0.56, 2.45, 0); g.add(shR);
-      var neck = cyl(0.12, 0.14, 0.16, skin); neck.position.y = 2.64; g.add(neck);
-      var head = ball(0.42, skin); head.scale.set(1.0, 1.04, 1.0); head.position.y = 3.02; g.add(head);
-      [-0.15, 0.15].forEach(function (x) {
-        var e = ball(0.09, white); e.scale.set(1, 1.2, 0.6); e.position.set(x, 3.06, 0.36); g.add(e);
-        var p = ball(0.045, dark); p.position.set(x, 3.06, 0.42); g.add(p);
+      // ---- lower body: jeans ----
+      var pelvis = cyl(0.34, 0.3, 0.42, pants); pelvis.position.y = 1.42; pelvis.scale.z = 0.8; g.add(pelvis);
+      var waist = cyl(0.35, 0.35, 0.14, pantsDk); waist.position.y = 1.62; waist.scale.z = 0.8; g.add(waist);
+      var buckle = box(0.12, 0.1, 0.04, accent); buckle.position.set(0, 1.62, 0.27); g.add(buckle);
+
+      // ---- torso: hoodie ----
+      var torso = cyl(0.42, 0.34, 0.95, hoodie); torso.position.y = 2.18; torso.scale.z = 0.78; g.add(torso);
+      var chest = box(0.78, 0.55, 0.42, hoodie); chest.position.y = 2.42; g.add(chest);
+      var pocket = box(0.52, 0.24, 0.1, hoodieDk); pocket.position.set(0, 1.95, 0.3); g.add(pocket);
+      var zip = box(0.05, 0.95, 0.05, hoodieDk); zip.position.set(0, 2.2, 0.33); g.add(zip);
+      var hood = ball(0.3, hoodieDk); hood.scale.set(1.25, 0.85, 0.7); hood.position.set(0, 2.78, -0.2); g.add(hood);
+      var collar = cyl(0.27, 0.33, 0.18, hoodieDk); collar.position.y = 2.66; collar.scale.z = 0.85; g.add(collar);
+      [-0.07, 0.07].forEach(function (x) { var ds = cyl(0.022, 0.022, 0.32, white); ds.position.set(x, 2.46, 0.3); g.add(ds); var k = ball(0.035, white); k.position.set(x, 2.3, 0.3); g.add(k); });
+
+      // ---- neck + head ----
+      var neck = cyl(0.12, 0.14, 0.16, skin); neck.position.y = 2.74; g.add(neck);
+      var head = ball(0.32, skin); head.scale.set(0.92, 1.05, 0.96); head.position.y = 3.04; g.add(head);
+      var jaw = box(0.34, 0.2, 0.34, skin); jaw.position.set(0, 2.88, 0.02); g.add(jaw);
+      [-1, 1].forEach(function (s) { var ear = ball(0.07, skin); ear.position.set(s * 0.3, 3.02, 0); g.add(ear); });
+      // face
+      [-0.13, 0.13].forEach(function (x) {
+        var w = ball(0.066, white); w.scale.set(1, 1.2, 0.5); w.position.set(x, 3.06, 0.28); g.add(w);
+        var p = ball(0.034, dark); p.position.set(x, 3.06, 0.31); g.add(p);
+        var brow = box(0.12, 0.03, 0.04, hair); brow.position.set(x, 3.15, 0.29); g.add(brow);
       });
-      var cap = ball(0.44, accent); cap.scale.set(1.02, 0.62, 1.02); cap.position.set(0, 3.24, 0); g.add(cap);
-      var brim = box(0.5, 0.07, 0.34, accent); brim.position.set(0, 3.18, 0.36); g.add(brim);
-      var hair = ball(0.2, dark); hair.scale.set(1.2, 0.5, 0.7); hair.position.set(0, 3.0, -0.32); g.add(hair);
+      var nose = box(0.07, 0.1, 0.08, skinDk); nose.position.set(0, 2.99, 0.31); g.add(nose);
+      var mouth = box(0.14, 0.025, 0.04, skinDk); mouth.position.set(0, 2.88, 0.29); g.add(mouth);
+      // hair + cap
+      var hairCap = ball(0.34, hair); hairCap.scale.set(1.0, 0.85, 1.02); hairCap.position.set(0, 3.16, -0.02); g.add(hairCap);
+      var cap = ball(0.36, accent); cap.scale.set(1.02, 0.6, 1.04); cap.position.set(0, 3.26, -0.02); g.add(cap);
+      var brim = box(0.46, 0.06, 0.3, accent); brim.position.set(0, 3.2, 0.32); g.add(brim);
 
-      playerArmL = makeArm(hoodie, skin, accent); playerArmL.position.set(-0.56, 2.45, 0);
-      playerArmR = makeArm(hoodie, skin, accent); playerArmR.position.set(0.56, 2.45, 0);
-      playerLegL = makeLeg(pants, shoe, accent); playerLegL.position.set(-0.22, 1.3, 0);
-      playerLegR = makeLeg(pants, shoe, accent); playerLegR.position.set(0.22, 1.3, 0);
+      // ---- separated, jointed arm: shoulder > upper > elbow > forearm > cuff > hand ----
+      function armGroup() {
+        var a = new THREE.Group();
+        a.add(ball(0.17, hoodie));                                              // shoulder
+        var up = cyl(0.14, 0.12, 0.5, hoodie); up.position.y = -0.32; a.add(up); // upper sleeve
+        var el = ball(0.12, hoodie); el.position.y = -0.58; a.add(el);           // elbow
+        var fo = cyl(0.12, 0.095, 0.45, hoodie); fo.position.y = -0.82; a.add(fo); // forearm sleeve
+        var cf = cyl(0.105, 0.105, 0.08, hoodieDk); cf.position.y = -1.04; a.add(cf); // cuff
+        var hand = ball(0.12, skin); hand.scale.set(1, 1.15, 0.7); hand.position.y = -1.14; a.add(hand);
+        var thumb = ball(0.05, skin); thumb.position.set(0.09, -1.09, 0.05); a.add(thumb);
+        return a;
+      }
+      // ---- separated, jointed leg: thigh > knee > shin > ankle > sneaker(sole+upper+toe+laces) ----
+      function legGroup() {
+        var l = new THREE.Group();
+        var th = cyl(0.17, 0.14, 0.55, pants); th.position.y = -0.32; l.add(th);
+        var kn = ball(0.145, pants); kn.position.y = -0.6; l.add(kn);
+        var sh = cyl(0.13, 0.1, 0.5, pants); sh.position.y = -0.88; l.add(sh);
+        var hem = cyl(0.115, 0.115, 0.08, pantsDk); hem.position.y = -1.12; l.add(hem);
+        var ankle = ball(0.09, skin); ankle.position.y = -1.18; l.add(ankle);
+        var so = box(0.26, 0.1, 0.54, sole); so.position.set(0, -1.32, 0.08); l.add(so);
+        var up2 = box(0.24, 0.16, 0.38, shoe); up2.position.set(0, -1.22, 0.0); l.add(up2);
+        var toe = ball(0.13, sole); toe.scale.set(1, 0.7, 1.1); toe.position.set(0, -1.27, 0.26); l.add(toe);
+        var lace = box(0.18, 0.04, 0.04, white); lace.position.set(0, -1.14, 0.06); l.add(lace);
+        var lace2 = box(0.18, 0.04, 0.04, white); lace2.position.set(0, -1.14, 0.14); l.add(lace2);
+        return l;
+      }
+
+      playerArmL = armGroup(); playerArmL.position.set(-0.52, 2.5, 0);
+      playerArmR = armGroup(); playerArmR.position.set(0.52, 2.5, 0);
+      playerLegL = legGroup(); playerLegL.position.set(-0.2, 1.4, 0);
+      playerLegR = legGroup(); playerLegR.position.set(0.2, 1.4, 0);
       g.add(playerArmL, playerArmR, playerLegL, playerLegR);
 
-      addAccessory(g, def, 3.0);        // per-character signature gear
+      addAccessory(g, def, 3.05);        // per-character signature gear
       g.scale.setScalar(def.scale || 1);
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
@@ -1152,6 +1196,7 @@
       else if (pw === "revive") extraLives = 1;
 
       state = "playing";
+      if (playerVisual) playerVisual.rotation.y = Math.PI; // run facing into the screen: back of the head toward us
       $("startScreen").classList.add("hidden");
       $("overScreen").classList.add("hidden");
       $("shopScreen").classList.add("hidden");

@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.0</div>
+  <div id="version">v4.2</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -399,59 +399,109 @@
         new THREE.MeshBasicMaterial({ color: 0x9fb6e0, transparent: true, opacity: 0.18 }));
       moonHalo.position.copy(moon.position); scene.add(moonHalo);
 
-      // ---- tiered pagoda towers w/ curved roofs + lanterns + banners ----
-      for (var s = 0; s < 70; s++) {
-        var side = s % 2 === 0 ? -1 : 1;
-        var col = neonPalette[(Math.random() * neonPalette.length) | 0];
-        var baseX = side * (8 + Math.random() * 22);
-        var baseZ = -Math.random() * TRACK_LEN;
-        var tower = new THREE.Group();
-
-        var tiers = 2 + (Math.random() * 4 | 0);
-        var w = 3 + Math.random() * 3.5;
-        var y = 0;
-        for (var t = 0; t < tiers; t++) {
-          var th = 4 + Math.random() * 5;
-          var seg = new THREE.Mesh(
-            new THREE.BoxGeometry(w, th, w),
-            new THREE.MeshStandardMaterial({ color: 0x10141d, emissive: col, emissiveIntensity: 0.22, metalness: 0.55, roughness: 0.6 })
-          );
-          seg.position.y = y + th / 2; tower.add(seg);
-          // curved pagoda roof (cone) over each tier
-          var roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.92, 1.4, 4),
-            new THREE.MeshStandardMaterial({ color: 0x161b26, emissive: col, emissiveIntensity: 0.3, metalness: 0.5, roughness: 0.6 }));
-          roof.rotation.y = Math.PI / 4; roof.position.y = y + th + 0.6; tower.add(roof);
-          // soft glowing eave
-          var eave = new THREE.Mesh(new THREE.BoxGeometry(w + 0.7, 0.18, w + 0.7),
-            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 }));
-          eave.position.y = y + th; tower.add(eave);
-          // hanging lanterns under the eave
-          if (Math.random() < 0.6) {
-            var lx = (Math.random() - 0.5) * w;
-            var lantern = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10),
-              new THREE.MeshBasicMaterial({ color: 0xffb060 }));
-            lantern.scale.y = 1.3; lantern.position.set(lx, y + th - 0.7, (side > 0 ? -1 : 1) * (w/2 + 0.1)); tower.add(lantern);
+      // ============================================================
+      //  JAPANESE STREET — a deliberate mix of real building types
+      //  (machiya townhouses, pagodas, signboard buildings, danchi
+      //   apartments, glass towers, shrines) + street lamps.
+      // ============================================================
+      function jmat(c, e, ei, r, m) { return new THREE.MeshStandardMaterial({ color: c, emissive: e || 0x000000, emissiveIntensity: ei || 0, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.1 : m }); }
+      function jlit(c) { return new THREE.MeshBasicMaterial({ color: c }); }
+      function jbox(w, h, d, mt) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mt); }
+      function jcyl(rt, rb, h, mt) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 10), mt); }
+      function jball(r, mt) { return new THREE.Mesh(new THREE.SphereGeometry(r, 10, 10), mt); }
+      function jpick() { return neonPalette[(Math.random() * neonPalette.length) | 0]; }
+      // lit window grid on the road-facing (+z) front
+      function jwindows(g, w, h, d, col) {
+        for (var wy = 2; wy < h - 1.2; wy += 2.4) {
+          for (var wx = -w / 2 + 0.8; wx <= w / 2 - 0.6; wx += 1.5) {
+            var c = Math.random() < 0.55 ? (Math.random() < 0.5 ? col : 0xfff0d0) : 0x1a2230;
+            var win = jbox(0.8, 1.2, 0.06, new THREE.MeshBasicMaterial({ color: c }));
+            win.position.set(wx, wy, d / 2 + 0.04); g.add(win);
           }
-          y += th; w *= 0.78;
         }
-        if (tiers >= 4) {
-          var spire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.16, 6, 8),
-            new THREE.MeshBasicMaterial({ color: col })); spire.position.y = y + 3; tower.add(spire);
-        }
-        // tall vertical banner sign facing the road
-        if (Math.random() < 0.55) {
-          var bw = 0.7 + Math.random() * 0.8, bh = 5 + Math.random() * 7;
-          var bill = new THREE.Mesh(
-            new THREE.PlaneGeometry(bw, bh),
-            new THREE.MeshBasicMaterial({ color: neonPalette[(Math.random()*neonPalette.length)|0], transparent: true, opacity: 0.9, side: THREE.DoubleSide })
-          );
-          bill.position.set(side * (w * -0.1 - 1.8), 6 + Math.random() * 6, side > 0 ? -w : w);
-          bill.rotation.y = side > 0 ? -0.35 : 0.35;
-          tower.add(bill);
-        }
-        tower.position.set(baseX, -0.2, baseZ);
-        scene.add(tower); buildings.push(tower);
       }
+
+      function bMachiya(col) {                       // traditional wooden townhouse
+        var g = new THREE.Group(), w = 4 + Math.random() * 2, h = 5 + Math.random() * 2, d = 4 + Math.random() * 1.5;
+        var body = jbox(w, h, d, jmat(0x2a2018, 0, 0, 0.95, 0.0)); body.position.y = h / 2; g.add(body);
+        var shop = jbox(w * 0.9, 2, 0.1, jlit(0xffd9a0)); shop.position.set(0, 1.2, d / 2 + 0.06); g.add(shop);
+        for (var lx = -w / 2 + 0.5; lx < w / 2 - 0.3; lx += 0.5) { var sl = jbox(0.06, 1.8, 0.06, jmat(0x140d08)); sl.position.set(lx, 1.2, d / 2 + 0.12); g.add(sl); }
+        var rm = jmat(0x12151b, 0, 0, 0.9, 0.1);
+        var r1 = jbox(w + 0.8, 0.25, d * 0.62, rm); r1.position.set(0, h + 0.45, d * 0.2); r1.rotation.x = -0.5; g.add(r1);
+        var r2 = jbox(w + 0.8, 0.25, d * 0.62, rm); r2.position.set(0, h + 0.45, -d * 0.2); r2.rotation.x = 0.5; g.add(r2);
+        var ridge = jbox(w + 0.9, 0.2, 0.2, rm); ridge.position.y = h + 0.9; g.add(ridge);
+        var sign = jbox(0.9, 1.3, 0.08, jlit(col)); sign.position.set(w * 0.3, 3.2, d / 2 + 0.12); g.add(sign);
+        var lan = jball(0.3, jlit(0xff5a3c)); lan.scale.y = 1.3; lan.position.set(-w * 0.3, 2.4, d / 2 + 0.22); g.add(lan);
+        return g;
+      }
+      function bPagoda(col) {                        // tiered temple pagoda
+        var g = new THREE.Group(), tiers = 3 + (Math.random() * 2 | 0), w = 3.5 + Math.random() * 2, y = 0;
+        for (var t = 0; t < tiers; t++) {
+          var th = 3.2 + Math.random() * 1.5;
+          var seg = jbox(w, th, w, jmat(0x241a14, col, 0.12, 0.8, 0.1)); seg.position.y = y + th / 2; g.add(seg);
+          var roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.95, 1.3, 4), jmat(0x3a1410, col, 0.18, 0.7, 0.1)); roof.rotation.y = Math.PI / 4; roof.position.y = y + th + 0.55; g.add(roof);
+          var eave = jbox(w + 0.8, 0.16, w + 0.8, jlit(0x2a0e0a)); eave.position.y = y + th; g.add(eave);
+          if (Math.random() < 0.7) { var l = jball(0.26, jlit(0xffb060)); l.scale.y = 1.3; l.position.set((Math.random() - 0.5) * w, y + th - 0.6, w / 2 + 0.1); g.add(l); }
+          y += th; w *= 0.8;
+        }
+        var fin = jcyl(0.04, 0.14, 3, jlit(0xffe2a0)); fin.position.y = y + 1.5; g.add(fin);
+        return g;
+      }
+      function bSignboard(col) {                     // Shinjuku-style stacked-sign building
+        var g = new THREE.Group(), w = 3 + Math.random() * 1.5, h = 14 + Math.random() * 16, d = 3 + Math.random() * 1.5;
+        var body = jbox(w, h, d, jmat(0x0e1018, 0, 0, 0.7, 0.4)); body.position.y = h / 2; g.add(body);
+        jwindows(g, w, h, d, col);
+        var nb = 3 + (Math.random() * 5 | 0);
+        for (var i = 0; i < nb; i++) { var sy = 3 + i * (h - 4) / nb; var sb = jbox(w + 0.6, 1.4, 0.15, jlit(jpick())); sb.position.set(0, sy, d / 2 + 0.12); g.add(sb); }
+        var vs = jbox(0.5, h * 0.5, 0.2, jlit(jpick())); vs.position.set(w / 2 + 0.3, h * 0.55, 0); g.add(vs);
+        return g;
+      }
+      function bDanchi(col) {                         // apartment block w/ balconies
+        var g = new THREE.Group(), w = 7 + Math.random() * 5, h = 10 + Math.random() * 8, d = 5 + Math.random() * 2;
+        var body = jbox(w, h, d, jmat(0x20242c, 0, 0, 0.9, 0.1)); body.position.y = h / 2; g.add(body);
+        jwindows(g, w, h, d, 0xfff0d0);
+        for (var by = 2.5; by < h - 1; by += 2.4) { var rail = jbox(w - 0.6, 0.12, 0.1, jmat(0x3a4150)); rail.position.set(0, by, d / 2 + 0.12); g.add(rail); }
+        var tank = jcyl(0.6, 0.6, 1.2, jmat(0x2a2f38)); tank.position.set(w * 0.3, h + 0.6, 0); g.add(tank);
+        return g;
+      }
+      function bTower(col) {                           // slim modern glass tower
+        var g = new THREE.Group(), w = 3.5 + Math.random() * 2.5, h = 18 + Math.random() * 22, d = 3.5 + Math.random() * 2.5;
+        var body = jbox(w, h, d, jmat(0x0c1018, 0x1a2a44, 0.15, 0.3, 0.7)); body.position.y = h / 2; g.add(body);
+        var ns = 2 + (Math.random() * 3 | 0);
+        for (var i = 0; i < ns; i++) { var sx = -w / 2 + (i + 1) * (w / (ns + 1)); var st = jbox(0.25, h * 0.85, 0.05, jlit(col)); st.position.set(sx, h * 0.5, d / 2 + 0.04); g.add(st); }
+        var ant = jcyl(0.05, 0.08, 3, jmat(0x333333)); ant.position.y = h + 1.5; g.add(ant);
+        var bea = jball(0.18, jlit(0xff3344)); bea.position.y = h + 0.6; g.add(bea);
+        return g;
+      }
+      function bShrine(col) {                          // small shrine with a torii
+        var g = new THREE.Group(), w = 4 + Math.random() * 1.5, h = 3.5;
+        var base = jbox(w, h, w * 0.8, jmat(0x2a1410, 0, 0, 0.9)); base.position.y = h / 2; g.add(base);
+        var roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.95, 1.6, 4), jmat(0x3a1410, 0xff7a6a, 0.1)); roof.rotation.y = Math.PI / 4; roof.position.y = h + 0.6; g.add(roof);
+        var tm = jlit(0xc0203a);
+        [-1.2, 1.2].forEach(function (x) { var p = jcyl(0.12, 0.14, 3.2, tm); p.position.set(x, 1.6, w * 0.7); g.add(p); });
+        var top = jbox(3.4, 0.3, 0.3, tm); top.position.set(0, 3.2, w * 0.7); g.add(top);
+        var top2 = jbox(2.8, 0.2, 0.25, tm); top2.position.set(0, 2.8, w * 0.7); g.add(top2);
+        return g;
+      }
+
+      var JB = [bMachiya, bMachiya, bPagoda, bSignboard, bSignboard, bSignboard, bDanchi, bDanchi, bTower, bTower, bShrine];
+      for (var s = 0; s < 66; s++) {
+        var side = s % 2 === 0 ? -1 : 1;
+        var b = JB[(Math.random() * JB.length) | 0](jpick());
+        b.position.set(side * (8 + Math.random() * 24), -0.2, -Math.random() * TRACK_LEN);
+        scene.add(b); buildings.push(b);
+      }
+      // street lamps along the curb
+      for (var pL = 0; pL < 30; pL++) {
+        var side2 = pL % 2 === 0 ? -1 : 1;
+        var lamp = new THREE.Group();
+        var pole = jcyl(0.08, 0.1, 5, jmat(0x2a2f38)); pole.position.y = 2.5; lamp.add(pole);
+        var head = jball(0.22, jlit(0xffe2a0)); head.position.set(side2 * -0.9, 4.9, 0); lamp.add(head);
+        var arm = jbox(1.1, 0.08, 0.08, jmat(0x2a2f38)); arm.position.set(side2 * -0.45, 4.95, 0); lamp.add(arm);
+        lamp.position.set(side2 * 5.2, -0.2, -Math.random() * TRACK_LEN);
+        scene.add(lamp); buildings.push(lamp);
+      }
+
 
       // ---- sky-gates spanning the road (futuristic torii-style arches) ----
       for (var gi = 0; gi < 6; gi++) {
@@ -962,40 +1012,42 @@
     function hex(n) { return "#" + n.toString(16).padStart(6, "0"); }
     // full-body robot figure for shop cards
     function figureSVG(def) {
-      var b = hex(def.body), n = hex(def.neon), a = hex(def.accent);
+      var b = hex(def.body), n = hex(def.neon), a = hex(def.accent), skin = "#f2c49a", white = "#f2f2f5";
+      var A = def.anime ? "" : (def.acc || "");
       var acc = "";
-      if (def.acc === "spikes") {
-        acc = '<polygon points="36,20 40,4 44,20" fill="'+a+'"/>' +
-              '<polygon points="40,30 44,16 47,32" fill="'+a+'"/>' +
-              '<polygon points="40,44 45,32 48,48" fill="'+a+'"/>' +
-              '<polygon points="40,58 46,48 48,62" fill="'+a+'"/>';
-      } else if (def.acc === "armor") {
-        acc = '<circle cx="40" cy="58" r="6" fill="'+a+'"/><circle cx="40" cy="58" r="3" fill="#eaf6ff"/>' +
-              '<ellipse cx="24" cy="46" rx="7" ry="5" fill="'+n+'"/><ellipse cx="56" cy="46" rx="7" ry="5" fill="'+n+'"/>';
-      } else if (def.acc === "halo") {
-        acc = '<ellipse cx="40" cy="14" rx="15" ry="5" fill="none" stroke="'+a+'" stroke-width="3"/>';
-      } else if (def.acc === "crown") {
-        acc = '<polygon points="30,20 33,8 36,20" fill="'+a+'"/><polygon points="40,20 43,5 46,20" fill="'+a+'"/><polygon points="50,20 47,8 44,20" fill="'+a+'"/>';
-      } else if (def.acc === "antennae") {
-        acc = '<line x1="33" y1="22" x2="30" y2="8" stroke="'+a+'" stroke-width="2"/><circle cx="30" cy="7" r="3" fill="'+a+'"/>' +
-              '<line x1="47" y1="22" x2="50" y2="8" stroke="'+a+'" stroke-width="2"/><circle cx="50" cy="7" r="3" fill="'+a+'"/>';
-      } else if (def.acc === "jetpack") {
-        acc = '<rect x="20" y="44" width="7" height="20" rx="3" fill="'+a+'"/><rect x="53" y="44" width="7" height="20" rx="3" fill="'+a+'"/>';
-      } else { // visor handled by face bar below
-        acc = '';
+      switch (A) {
+        case "spikes":   acc = '<polygon points="22,46 13,30 24,40" fill="'+a+'"/><polygon points="22,58 12,44 24,54" fill="'+a+'"/><polygon points="58,46 67,30 56,40" fill="'+a+'"/>'; break;
+        case "armor":    acc = '<ellipse cx="23" cy="46" rx="6" ry="8" fill="'+a+'"/><ellipse cx="57" cy="46" rx="6" ry="8" fill="'+a+'"/>'; break;
+        case "halo":     acc = '<ellipse cx="40" cy="9" rx="14" ry="4" fill="none" stroke="'+a+'" stroke-width="3"/>'; break;
+        case "crown":    acc = '<polygon points="30,13 33,3 36,13" fill="'+a+'"/><polygon points="40,13 43,1 46,13" fill="'+a+'"/><polygon points="50,13 47,3 44,13" fill="'+a+'"/>'; break;
+        case "antennae": acc = '<line x1="34" y1="13" x2="31" y2="3" stroke="'+a+'" stroke-width="2"/><circle cx="31" cy="3" r="3" fill="'+a+'"/><line x1="46" y1="13" x2="49" y2="3" stroke="'+a+'" stroke-width="2"/><circle cx="49" cy="3" r="3" fill="'+a+'"/>'; break;
+        case "jetpack":  acc = '<rect x="18" y="46" width="7" height="20" rx="3" fill="'+a+'"/><rect x="55" y="46" width="7" height="20" rx="3" fill="'+a+'"/>'; break;
+        case "wings":    acc = '<polygon points="26,44 7,40 22,60" fill="'+a+'" opacity="0.85"/><polygon points="54,44 73,40 58,60" fill="'+a+'" opacity="0.85"/>'; break;
+        case "mohawk":   acc = '<polygon points="35,13 38,3 41,13" fill="'+a+'"/><polygon points="40,13 43,1 46,13" fill="'+a+'"/><polygon points="45,13 48,4 51,13" fill="'+a+'"/>'; break;
+        case "horns":    acc = '<polygon points="28,16 21,3 32,14" fill="'+a+'"/><polygon points="52,16 59,3 48,14" fill="'+a+'"/>'; break;
+        case "orbs":     acc = '<circle cx="19" cy="56" r="4" fill="'+a+'"/><circle cx="61" cy="56" r="4" fill="'+a+'"/><circle cx="40" cy="73" r="4" fill="'+a+'"/>'; break;
+        case "cape":     acc = '<polygon points="28,42 52,42 58,98 22,98" fill="'+a+'" opacity="0.5"/>'; break;
       }
-      return '<svg viewBox="0 0 80 130" xmlns="http://www.w3.org/2000/svg">' +
+      var animeHead = '<circle cx="40" cy="26" r="13" fill="#ececed"/>' +
+        '<polygon points="27,21 40,9 53,21 51,30 29,30" fill="#ffffff"/>' +
+        '<rect x="31" y="24" width="18" height="8" rx="2" fill="#ffffff"/>' +
+        '<line x1="36" y1="22" x2="38" y2="33" stroke="#101016" stroke-width="1.5"/><line x1="44" y1="23" x2="42" y2="31" stroke="#101016" stroke-width="1.5"/>' +
+        '<rect x="33" y="26" width="5" height="2" fill="#bfefff"/><rect x="42" y="26" width="5" height="2" fill="#bfefff"/>';
+      var humanHead = '<circle cx="40" cy="26" r="13" fill="'+skin+'"/>' +
+        '<circle cx="35" cy="27" r="2" fill="#22222e"/><circle cx="45" cy="27" r="2" fill="#22222e"/>' +
+        '<ellipse cx="40" cy="18" rx="14" ry="7" fill="'+a+'"/><rect x="40" y="20" width="15" height="4" rx="2" fill="'+a+'"/>';
+      return '<svg viewBox="0 0 80 118" xmlns="http://www.w3.org/2000/svg">' +
         acc +
-        '<rect x="31" y="20" width="18" height="18" rx="6" fill="'+b+'" stroke="'+n+'" stroke-width="1.5"/>' + // head
-        '<rect x="33" y="26" width="14" height="4" rx="2" fill="'+a+'"/>' + // visor/eyes
-        '<rect x="28" y="40" width="24" height="30" rx="6" fill="'+b+'" stroke="'+n+'" stroke-width="1.5"/>' + // torso
-        '<rect x="18" y="42" width="9" height="26" rx="4" fill="'+b+'" stroke="'+n+'" stroke-width="1.2"/>' + // L arm
-        '<rect x="53" y="42" width="9" height="26" rx="4" fill="'+b+'" stroke="'+n+'" stroke-width="1.2"/>' + // R arm
-        '<rect x="30" y="70" width="9" height="34" rx="4" fill="'+b+'" stroke="'+n+'" stroke-width="1.2"/>' + // L leg
-        '<rect x="41" y="70" width="9" height="34" rx="4" fill="'+b+'" stroke="'+n+'" stroke-width="1.2"/>' + // R leg
-        '<rect x="29" y="102" width="12" height="7" rx="2" fill="'+n+'"/>' + // L boot
-        '<rect x="39" y="102" width="12" height="7" rx="2" fill="'+n+'"/>' + // R boot
-        (def.acc !== "armor" ? '<circle cx="40" cy="52" r="3" fill="'+n+'"/>' : '') +
+        '<rect x="27" y="40" width="26" height="34" rx="9" fill="'+n+'"/>' +
+        '<rect x="33" y="54" width="14" height="9" rx="3" fill="'+a+'"/>' +
+        '<rect x="18" y="42" width="9" height="22" rx="4" fill="'+n+'"/>' +
+        '<rect x="53" y="42" width="9" height="22" rx="4" fill="'+n+'"/>' +
+        '<circle cx="22" cy="66" r="4" fill="'+skin+'"/><circle cx="58" cy="66" r="4" fill="'+skin+'"/>' +
+        '<rect x="30" y="74" width="9" height="28" rx="3" fill="'+b+'"/>' +
+        '<rect x="41" y="74" width="9" height="28" rx="3" fill="'+b+'"/>' +
+        '<rect x="28" y="100" width="13" height="8" rx="3" fill="'+white+'"/>' +
+        '<rect x="39" y="100" width="13" height="8" rx="3" fill="'+white+'"/>' +
+        (def.anime ? animeHead : humanHead) +
         '</svg>';
     }
 
@@ -1132,6 +1184,7 @@
       requestAnimationFrame(animate);
       var dt = Math.min(clock.getDelta(), 0.05);
       if (state === "playing") update(dt);
+      else if (playerVisual) { playerVisual.rotation.y = 0; playerVisual.rotation.x = 0; playerVisual.position.y = 0; }
       renderer.render(scene, camera);
     }
     function update(dt) {
@@ -1158,8 +1211,9 @@
         if (playerArmL) playerArmL.rotation.x = -s * amp * 0.9;
         if (playerArmR) playerArmR.rotation.x = s * amp * 0.9;
         if (playerVisual) {
+          playerVisual.rotation.y = Math.PI;                                 // face forward, into the screen
           playerVisual.position.y = grounded ? Math.abs(Math.sin(runT)) * 0.13 : 0.0;
-          playerVisual.rotation.x = grounded ? -0.07 : 0.12;
+          playerVisual.rotation.x = grounded ? 0.08 : 0.18;                  // lean into the run / tuck in air
         }
       }
       player.rotation.y = (targetX - player.position.x) * -0.25;

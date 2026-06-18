@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.7</div>
+  <div id="version">v4.8</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -321,6 +321,19 @@
       player = new THREE.Group();
       player.position.set(0, 0, 1);
       scene.add(player);
+      // soft contact shadow so the character is grounded, not floating
+      var shadowTex = (function () {
+        var c = document.createElement("canvas"); c.width = c.height = 128;
+        var ctx = c.getContext("2d");
+        var grd = ctx.createRadialGradient(64, 64, 4, 64, 64, 60);
+        grd.addColorStop(0, "rgba(0,0,0,0.55)"); grd.addColorStop(0.6, "rgba(0,0,0,0.25)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = grd; ctx.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(c);
+      })();
+      var contactShadow = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4),
+        new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+      contactShadow.rotation.x = -Math.PI / 2; contactShadow.position.y = 0.03;
+      player.add(contactShadow);
       applyCharacter(charById(save.selected));   // box fallback shows instantly
       loadRobot();                                // real model swaps in when ready
       bindControls();
@@ -374,6 +387,9 @@
       var paveMat = new THREE.MeshStandardMaterial({ color: 0x0c1018, metalness: 0.1, roughness: 0.95 });
       var paveMat2 = new THREE.MeshStandardMaterial({ color: 0x10151f, metalness: 0.1, roughness: 0.95 });
       var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
+      var markMat = new THREE.MeshStandardMaterial({ color: 0xc4ccd8, roughness: 0.6, metalness: 0.0, emissive: 0x20262e, emissiveIntensity: 0.2 });
+      var grooveMat = new THREE.MeshStandardMaterial({ color: 0x06080c, roughness: 1.0 });
+      var metalMat = new THREE.MeshStandardMaterial({ color: 0x161a22, roughness: 0.7, metalness: 0.55 });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();
         var road = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, SEG), roadMat);
@@ -383,6 +399,35 @@
         [-9, 9].forEach(function (px) { var walk = new THREE.Mesh(new THREE.BoxGeometry(8, 0.34, SEG), paveMat2); walk.position.set(px, -0.28, 0); tile.add(walk); });
         var curbL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbL.position.set(-4.8, -0.1, 0); tile.add(curbL);
         var curbR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbR.position.set(4.8, -0.1, 0); tile.add(curbR);
+        // dashed centre line
+        for (var dz = -SEG / 2 + 1; dz < SEG / 2; dz += 3) {
+          var dash = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.02, 1.4), markMat); dash.position.set(0, 0.01, dz); tile.add(dash);
+        }
+        // lane-divider + road-edge lines
+        [-2.6, 2.6, -4.2, 4.2].forEach(function (lx) {
+          var line = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, SEG), markMat); line.position.set(lx, 0.01, 0); tile.add(line);
+        });
+        // zebra crossing every few tiles
+        if (i % 6 === 0) {
+          for (var cz = -1.6; cz <= 1.6; cz += 0.8) {
+            var zebra = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.02, 0.42), markMat); zebra.position.set(0, 0.013, -SEG / 2 + 3 + cz); tile.add(zebra);
+          }
+        }
+        // manhole cover on some tiles
+        if (i % 4 === 1) {
+          var manhole = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.04, 18), metalMat); manhole.position.set(i % 8 === 1 ? 1.8 : -1.8, 0.005, (i * 7 % (SEG | 0)) - SEG / 2); tile.add(manhole);
+        }
+        // sidewalk panel seams
+        [-9, 9].forEach(function (wx) {
+          for (var gz = -SEG / 2 + 1.5; gz < SEG / 2; gz += 2.5) {
+            var seam = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.02, 0.06), grooveMat); seam.position.set(wx, -0.09, gz); tile.add(seam);
+          }
+        });
+        // storm drain at the curb on some tiles
+        if (i % 5 === 2) {
+          var drain = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.4), metalMat); drain.position.set(-4.5, 0.0, 1.5); tile.add(drain);
+          for (var sg = -0.3; sg <= 0.3; sg += 0.12) { var slot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.03), grooveMat); slot.position.set(-4.5, 0.03, 1.5 + sg); tile.add(slot); }
+        }
         [-1.2, 1.2].forEach(function (x) {
           var strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, SEG * 0.55), glowMat);
           strip.position.set(x, 0.02, 0); tile.add(strip);
@@ -1424,6 +1469,14 @@
   function hat(t,open){ var s=actx.createBufferSource(); s.buffer=noiseBuf(open?0.18:0.05); var f=actx.createBiquadFilter(); f.type="highpass"; f.frequency.value=8200; var g=actx.createGain(); env(g,t,0.001,open?0.15:0.04,0.16); s.connect(f); f.connect(g); g.connect(master); s.start(t); }
   function bass808(t,freq,dur){ var o=actx.createOscillator(),g=actx.createGain(),ws=actx.createWaveShaper(); ws.curve=DIST; o.type="triangle"; o.frequency.setValueAtTime(freq*1.5,t); o.frequency.exponentialRampToValueAtTime(freq,t+0.06); env(g,t,0.004,dur*1.15,1.05); o.connect(ws); ws.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.1); }
   function bell(t,freq){ if(!freq)return; var o1=actx.createOscillator(),o2=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter(); o1.type="square"; o2.type="square"; o1.frequency.value=freq; o2.frequency.value=freq*1.005; f.type="bandpass"; f.frequency.value=freq*1.2; f.Q.value=4.5; env(g,t,0.002,0.2,0.22); f.Q.value=7; o1.connect(f); o2.connect(f); f.connect(g); g.connect(master); o1.start(t); o2.start(t); o1.stop(t+0.22); o2.stop(t+0.22); }
+  // chopped vocal stab (formant synthesis) -> the "voice" in the phonk
+  var VOWELS=[[730,1090,2440],[530,1840,2480],[570,840,2410],[270,2290,3010]]; // ah eh oh ee
+  function voxChop(t,formants,pitch,dur){
+    var src=actx.createOscillator(); src.type="sawtooth"; src.frequency.setValueAtTime(pitch,t); src.frequency.linearRampToValueAtTime(pitch*0.96,t+dur);
+    var out=actx.createGain(); env(out,t,0.025,dur,0.17);
+    formants.forEach(function(ff,i){ var bp=actx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=ff; bp.Q.value=9; var fg=actx.createGain(); fg.gain.value=[1,0.7,0.4][i]||0.3; src.connect(bp); bp.connect(fg); fg.connect(out); });
+    out.connect(master); src.start(t); src.stop(t+dur+0.05);
+  }
 
   // 4-bar dark progression in A minor (808 roots) + cowbell melody
   var ROOTS=[55.00,43.65,65.41,49.00]; // A1 F1 C2 G1  (i - VI - III - VII)
@@ -1447,6 +1500,8 @@
       else if(i===3) bass808(nextT, ROOTS[b], stepDur*1.5);
       else if(i===5) bass808(nextT, ROOTS[b], stepDur*2);
       bell(nextT, MEL[b][i]);
+      if(i===2) voxChop(nextT, VOWELS[b%4], 175, stepDur*1.7);
+      if(i===6) voxChop(nextT, VOWELS[(b+2)%4], 146, stepDur*1.5);
       nextT += stepDur; step++;
       if(i===STEPS-1) bar++;
     }

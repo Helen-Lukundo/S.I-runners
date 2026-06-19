@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <div id="version">v4.9</div>
+  <div id="version">v5.1</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -391,6 +391,8 @@
       var markMat = new THREE.MeshStandardMaterial({ color: 0xc4ccd8, roughness: 0.6, metalness: 0.0, emissive: 0x20262e, emissiveIntensity: 0.2 });
       var grooveMat = new THREE.MeshStandardMaterial({ color: 0x06080c, roughness: 1.0 });
       var metalMat = new THREE.MeshStandardMaterial({ color: 0x161a22, roughness: 0.7, metalness: 0.55 });
+      var dirtMat = new THREE.MeshStandardMaterial({ color: 0x4a3320, roughness: 1.0, metalness: 0.0 });
+      var dirtMat2 = new THREE.MeshStandardMaterial({ color: 0x3a2718, roughness: 1.0, metalness: 0.0 });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();
         var road = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, SEG), roadMat);
@@ -398,6 +400,11 @@
         // wide ground the whole city sits on (sidewalks both sides), scrolls with the tile
         var pave = new THREE.Mesh(new THREE.BoxGeometry(120, 0.3, SEG), paveMat); pave.position.y = -0.35; tile.add(pave);
         [-9, 9].forEach(function (px) { var walk = new THREE.Mesh(new THREE.BoxGeometry(8, 0.34, SEG), paveMat2); walk.position.set(px, -0.28, 0); tile.add(walk); });
+        // brown dirt verge outside the sidewalks (where the trees grow)
+        [-15, 15].forEach(function (dx) {
+          var dirt = new THREE.Mesh(new THREE.BoxGeometry(16, 0.3, SEG), dirtMat); dirt.position.set(dx, -0.33, 0); tile.add(dirt);
+          var patch = new THREE.Mesh(new THREE.BoxGeometry(4, 0.32, SEG * 0.4), dirtMat2); patch.position.set(dx + (Math.random() - 0.5) * 6, -0.32, (Math.random() - 0.5) * SEG * 0.4); tile.add(patch);
+        });
         var curbL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbL.position.set(-4.8, -0.1, 0); tile.add(curbL);
         var curbR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, SEG), paveMat2); curbR.position.set(4.8, -0.1, 0); tile.add(curbR);
         // dashed centre line
@@ -553,6 +560,34 @@
         var arm = jbox(1.1, 0.08, 0.08, jmat(0x2a2f38)); arm.position.set(side2 * -0.45, 4.95, 0); lamp.add(arm);
         lamp.position.set(side2 * 5.2, -0.2, -Math.random() * TRACK_LEN);
         scene.add(lamp); buildings.push(lamp);
+      }
+      // trees on the dirt verge between the sidewalk and the buildings
+      function bTree() {
+        var t = new THREE.Group();
+        var barkMat = jmat(0x4a3320, 0, 0, 0.95, 0.0);
+        var trunk = jcyl(0.16, 0.4, 2.8, barkMat); trunk.position.y = 1.4; t.add(trunk);
+        var flare = jcyl(0.4, 0.62, 0.5, barkMat); flare.position.y = 0.25; t.add(flare);   // root flare
+        // a few branches angling up toward the canopy
+        [[0.5, 2.4, 0.5], [-0.5, 2.5, -0.4], [0.2, 2.7, -0.5]].forEach(function (br) {
+          var b = jcyl(0.07, 0.13, 1.1, barkMat); b.position.set(br[0], br[1], br[2]);
+          b.rotation.z = br[0] > 0 ? -0.7 : 0.7; b.rotation.x = br[2] > 0 ? -0.5 : 0.5; t.add(b);
+        });
+        // layered canopy from clustered foliage in varied greens (denser = more real)
+        var greens = [0x2f6b2e, 0x265c27, 0x356f30, 0x1f4d20, 0x3a7a38];
+        var blobs = [[0, 3.5, 0, 1.15], [0.8, 3.3, 0.3, 0.85], [-0.8, 3.2, -0.2, 0.85], [0.3, 3.9, -0.3, 0.8], [-0.4, 3.8, 0.4, 0.78], [0.6, 3.7, -0.6, 0.62], [-0.7, 3.55, 0.5, 0.6], [0, 4.2, 0, 0.62]];
+        blobs.forEach(function (bl, k) {
+          var f = jball(bl[3], jmat(greens[k % greens.length], 0, 0, 0.9, 0.0));
+          f.position.set(bl[0], bl[1], bl[2]); f.scale.set(1, 0.92, 1); t.add(f);
+        });
+        var under = jball(1.0, jmat(0x163a18, 0, 0, 0.95, 0.0)); under.position.set(0, 3.25, 0); under.scale.set(1.05, 0.55, 1.05); t.add(under); // shaded underside
+        return t;
+      }
+      for (var tr = 0; tr < 28; tr++) {
+        var sideT = tr % 2 === 0 ? -1 : 1;
+        var tree = bTree();
+        tree.position.set(sideT * (11 + Math.random() * 5), -0.2, -Math.random() * TRACK_LEN);
+        tree.scale.setScalar(0.8 + Math.random() * 0.6);
+        scene.add(tree); buildings.push(tree);
       }
 
 
@@ -1515,16 +1550,16 @@
   ];
   var KICK=[1,0,1,1,0,1,1,0], SNARE=[0,0,0,0,1,0,0,1], HAT=[1,1,1,1,1,1,1,1];
 
+  var BEAT = ("bo botbobobotttbobotbobobobotbobottttbobotbotbotbotbotbotbotbotbotbotbotbotibbooooboboboboboboboboboboboboobboboob-boobobboobobobbotttttttt obot").replace(/[\s-]+/g,"");
   function schedule(){
     var ahead=0.2;
     while(nextT < actx.currentTime + ahead){
       var i=step%STEPS, b=bar%4;
-      if(KICK[i]) kick(nextT);
-      if(SNARE[i]) snare(nextT);
-      if(HAT[i]) hat(nextT, i===7);
-      if(i===0) bass808(nextT, ROOTS[b], stepDur*3);
-      else if(i===3) bass808(nextT, ROOTS[b], stepDur*1.5);
-      else if(i===5) bass808(nextT, ROOTS[b], stepDur*2);
+      var c=BEAT.charAt(step % BEAT.length);          // b=kick, o=kick+808 boom, t=hi-hat, i=snare
+      if(c==="b"){ kick(nextT); }
+      else if(c==="o"){ kick(nextT); bass808(nextT, ROOTS[b], stepDur*2); }
+      else if(c==="t"){ hat(nextT, (step%2)===1); }
+      else if(c==="i"){ snare(nextT); }
       bell(nextT, MEL[b][i]);
       if(i===2) voxChop(nextT, VOWELS[b%4], ROOTS[b]*3.2, stepDur*1.7);
       if(i===6) voxChop(nextT, VOWELS[(b+2)%4], ROOTS[b]*2.4, stepDur*1.5);

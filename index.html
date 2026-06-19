@@ -104,6 +104,7 @@
   <div id="hud" class="hidden">
     <div class="pill">SCORE <span class="num" id="scoreVal">0</span></div>
     <div class="pill" id="coinPill">◎ <span class="num" id="coinVal">0</span></div>
+    <div class="pill" id="boostBar" style="display:none;"></div>
   </div>
 
   <!-- Start -->
@@ -173,7 +174,7 @@
     </div>
   </div>
 
-  <div id="version">v5.1</div>
+  <div id="version">v5.4</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -281,13 +282,18 @@
 
     // ---------- State ----------
     var scene, camera, renderer, clock;
-    var player, playerVisual, playerLegL, playerLegR, playerArmL, playerArmR;
+    var player, playerVisual, playerLegL, playerLegR, playerArmL, playerArmR, playerHair, playerCoat;
     var modelProto = null, modelReady = false, mixer = null, runAction = null, usingModel = false;
-    var roadTiles = [], buildings = [], obstacles = [], coins = [], flyingCars = [], gates = [], chests = [];
+    var roadTiles = [], buildings = [], obstacles = [], coins = [], flyingCars = [], gates = [], chests = [], boosts = [];
     var lane = 1, targetX = 0, vy = 0, grounded = true, runT = 0;
     var speed = BASE_SPEED, distance = 0, coinCount = 0, score = 0;
     var jumpAction = null, shieldArmed = false, shieldMesh = null, magnetOn = false, invuln = 0;
     var jumpV = JUMP_V, coinMult = 1, scoreMult = 1, extraLives = 0;
+    var BOOST_DURATION = 8;                 // seconds a picked-up boost lasts
+    var boostT = { magnet: 0, coins: 0, score: 0 };
+    function magnetActive() { return magnetOn || boostT.magnet > 0; }
+    function coinValue() { return Math.max(coinMult, boostT.coins > 0 ? 2 : 1); }
+    function scoreFactor() { return Math.max(scoreMult, boostT.score > 0 ? 2 : 1); }
     var sliding = false, slideT = 0;
     var state = "menu";
 
@@ -316,6 +322,7 @@
       scene.add(new THREE.AmbientLight(0x2a2e36, 0.5));
       var key = new THREE.DirectionalLight(0xe6ebf2, 1.12); key.position.set(-22, 40, -28); scene.add(key);
       var rim = new THREE.DirectionalLight(0xffc89a, 0.4); rim.position.set(12, 14, 12); scene.add(rim);
+      var backRim = new THREE.DirectionalLight(0xaecbff, 0.85); backRim.position.set(0, 11, 26); scene.add(backRim); // edge light on the runner
 
       buildWorld();
       // player is a positioning group; visual (model or fallback) goes inside it
@@ -645,9 +652,28 @@
 
     function maybeSpawn(z) {
       var r = Math.random();
-      if (r < 0.50) spawnObstacle(z);
-      else if (r < 0.86) spawnCoinRow(z);
-      else if (r < 0.94) spawnChest(z);
+      if (r < 0.48) spawnObstacle(z);
+      else if (r < 0.82) spawnCoinRow(z);
+      else if (r < 0.90) spawnChest(z);
+      else if (r < 0.96) spawnBoost(z);
+    }
+    function spawnBoost(z) {
+      var kinds = [{ kind: "magnet", color: 0xff4d6a }, { kind: "coins", color: 0xffd23e }, { kind: "score", color: 0x39e0ff }];
+      var k = kinds[(Math.random() * kinds.length) | 0];
+      var l = (Math.random() * 3) | 0;
+      var g = new THREE.Group();
+      var core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0),
+        new THREE.MeshStandardMaterial({ color: k.color, emissive: k.color, emissiveIntensity: 0.7, metalness: 0.6, roughness: 0.3 }));
+      g.add(core);
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.07, 10, 24),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: k.color, emissiveIntensity: 0.6, metalness: 0.85, roughness: 0.2 }));
+      ring.rotation.x = Math.PI / 2; g.add(ring);
+      var halo = new THREE.Mesh(new THREE.SphereGeometry(0.85, 14, 14),
+        new THREE.MeshBasicMaterial({ color: k.color, transparent: true, opacity: 0.16 }));
+      g.add(halo);
+      g.position.set(LANES[l], 1.4, z);
+      g.userData = { lane: l, alive: true, kind: k.kind };
+      scene.add(g); boosts.push(g);
     }
     function spawnChest(z) {
       var l = (Math.random() * 3) | 0;
@@ -898,13 +924,14 @@
       function ms(c, r, m) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.0 : m }); }
       var hoodie = ms(def.neon, 0.82), hoodieDk = ms(shade(def.neon, 0.6), 0.85),
           pants = ms(shade(def.body, 2.6), 0.9), pantsDk = ms(shade(def.body, 1.8), 0.92),
-          skin = ms(0xf0c49a, 0.9), skinDk = ms(0xd9a878, 0.9),
+          skin = ms(0xc8ced8, 0.45, 0.62), skinDk = ms(0x9098a4, 0.5, 0.55),
           shoe = ms(def.accent, 0.6, 0.1), sole = ms(0xf2f2f5, 0.7), hair = ms(0x241a16, 0.85),
           dark = ms(0x1a1a22, 0.8), white = ms(0xf4f4f7, 0.6),
           accent = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1, emissive: def.accent, emissiveIntensity: 0.12 });
+      var cyber = new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 1.3, roughness: 0.35, metalness: 0.7 });
       function box(w, h, d, m) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); }
-      function cyl(rt, rb, h, m) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 14), m); }
-      function ball(r, m) { return new THREE.Mesh(new THREE.SphereGeometry(r, 16, 14), m); }
+      function cyl(rt, rb, h, m) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 24), m); }
+      function ball(r, m) { return new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m); }
 
       // ---- lower body: jeans ----
       var pelvis = cyl(0.34, 0.3, 0.42, pants); pelvis.position.y = 1.42; pelvis.scale.z = 0.8; g.add(pelvis);
@@ -917,6 +944,8 @@
       var belly = ball(0.36, hoodie); belly.scale.set(0.96, 0.72, 0.6); belly.position.set(0, 2.06, 0.0); g.add(belly);
       var pocket = box(0.52, 0.24, 0.1, hoodieDk); pocket.position.set(0, 1.95, 0.3); g.add(pocket);
       var zip = box(0.05, 0.95, 0.05, hoodieDk); zip.position.set(0, 2.2, 0.33); g.add(zip);
+      var coreC = ball(0.1, cyber); coreC.position.set(0, 2.34, 0.34); g.add(coreC);
+      var coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.03, 8, 18), cyber); coreRing.position.set(0, 2.34, 0.33); g.add(coreRing);
       var hood = ball(0.28, hoodieDk); hood.scale.set(1.25, 0.85, 0.7); hood.position.set(0, 2.62, -0.18); g.add(hood);
       var collar = cyl(0.22, 0.28, 0.16, hoodieDk); collar.position.y = 2.52; collar.scale.z = 0.85; g.add(collar);
       [-0.07, 0.07].forEach(function (x) { var ds = cyl(0.022, 0.022, 0.32, white); ds.position.set(x, 2.46, 0.3); g.add(ds); var k = ball(0.035, white); k.position.set(x, 2.3, 0.3); g.add(k); });
@@ -930,14 +959,16 @@
       [-0.08, 0.08].forEach(function (x) {
         var socket = ball(0.045, skinDk); socket.scale.set(1, 0.7, 0.4); socket.position.set(x, 2.85, 0.16); g.add(socket);
         var w = ball(0.032, white); w.scale.set(1.1, 0.9, 0.6); w.position.set(x, 2.85, 0.17); g.add(w);
-        var iris = ball(0.018, dark); iris.position.set(x, 2.85, 0.19); g.add(iris);
+        var iris = ball(0.018, cyber); iris.position.set(x, 2.85, 0.19); g.add(iris);
         var brow = box(0.085, 0.02, 0.04, hair); brow.position.set(x, 2.91, 0.17); brow.rotation.z = x > 0 ? -0.1 : 0.1; g.add(brow);
       });
       var mouth = box(0.08, 0.02, 0.03, skinDk); mouth.position.set(0, 2.74, 0.18); g.add(mouth);
+      [-1, 1].forEach(function (sx) { var seam = box(0.018, 0.13, 0.02, cyber); seam.position.set(sx * 0.13, 2.79, 0.15); g.add(seam); }); // cyber cheek seams
 
       // ---- poofy layered hair with depth ----
       var hairLt = ms(0x3a2a1c, 0.8), hairDk = ms(0x140d09, 0.85);
-      function tuft(x, y, z, r, m, sx, sy, sz) { var t = ball(r, m); t.scale.set(sx || 1, sy || 1, sz || 1); t.position.set(x, y, z); g.add(t); }
+      var HCY = 2.84, hairGrp = new THREE.Group(); hairGrp.position.y = HCY; g.add(hairGrp);
+      function tuft(x, y, z, r, m, sx, sy, sz) { var t = ball(r, m); t.scale.set(sx || 1, sy || 1, sz || 1); t.position.set(x, y - HCY, z); hairGrp.add(t); }
       tuft(0, 2.92, -0.01, 0.21, hairDk, 1.05, 0.95, 1.08);
       tuft(0, 2.82, -0.2, 0.11, hairDk, 1.2, 0.9, 0.8);
       tuft(-0.17, 2.85, -0.06, 0.09, hairDk, 0.9, 1.2, 1);
@@ -954,32 +985,44 @@
       tuft(0.08, 3.05, -0.01, 0.085, hairLt, 1.1, 0.9, 1);
       tuft(0, 3.09, -0.05, 0.08, hairLt, 1.2, 0.8, 1);
       tuft(0, 2.95, 0.17, 0.06, hairLt, 1.5, 0.6, 0.7);
+      tuft(0, 2.86, -0.32, 0.12, hairDk, 1.1, 0.8, 1.0);                // trailing swoosh
+      tuft(-0.1, 2.9, -0.3, 0.1, hair, 1, 0.9, 1.1);
+      tuft(0.12, 2.92, -0.28, 0.09, hairLt, 1, 0.9, 1.1);
+
+      // flowy coat tail at the back (animated)
+      var coatGrp = new THREE.Group(); coatGrp.position.set(0, 2.25, -0.22); g.add(coatGrp);
+      var tail = box(0.76, 1.2, 0.06, hoodieDk); tail.position.y = -0.58; coatGrp.add(tail);
+      var tail2 = box(0.52, 0.95, 0.05, hoodie); tail2.position.set(0, -0.5, -0.05); coatGrp.add(tail2);
 
       // ---- separated, jointed arm: shoulder > upper > elbow > forearm > cuff > hand ----
       function armGroup() {
-        var a = new THREE.Group();
-        a.add(ball(0.17, hoodie));                                              // shoulder
+        var a = new THREE.Group();                                              // pivot: shoulder
+        a.add(ball(0.17, hoodie));
         var up = cyl(0.14, 0.12, 0.5, hoodie); up.position.y = -0.32; a.add(up); // upper sleeve
-        var el = ball(0.12, hoodie); el.position.y = -0.58; a.add(el);           // elbow
-        var fo = cyl(0.12, 0.095, 0.45, hoodie); fo.position.y = -0.82; a.add(fo); // forearm sleeve
-        var cf = cyl(0.105, 0.105, 0.08, hoodieDk); cf.position.y = -1.04; a.add(cf); // cuff
-        var hand = ball(0.12, skin); hand.scale.set(1, 1.15, 0.7); hand.position.y = -1.14; a.add(hand);
-        var thumb = ball(0.05, skin); thumb.position.set(0.09, -1.09, 0.05); a.add(thumb);
+        var fg = new THREE.Group(); fg.position.y = -0.58;                       // pivot: elbow
+        fg.add(ball(0.12, hoodie));                                              // elbow joint
+        var fo = cyl(0.12, 0.095, 0.45, hoodie); fo.position.y = -0.24; fg.add(fo);
+        var cf = cyl(0.105, 0.105, 0.08, hoodieDk); cf.position.y = -0.46; fg.add(cf);
+        var hand = ball(0.12, skin); hand.scale.set(1, 1.15, 0.7); hand.position.y = -0.56; fg.add(hand);
+        var thumb = ball(0.05, skin); thumb.position.set(0.09, -0.51, 0.05); fg.add(thumb);
+        a.add(fg); a.userData.elbow = fg;
         return a;
       }
-      // ---- separated, jointed leg: thigh > knee > shin > ankle > sneaker(sole+upper+toe+laces) ----
+      // ---- separated, jointed leg: hip > thigh > [knee joint] > shin > ankle > sneaker ----
       function legGroup() {
-        var l = new THREE.Group();
+        var l = new THREE.Group();                                              // pivot: hip
         var th = cyl(0.17, 0.14, 0.55, pants); th.position.y = -0.32; l.add(th);
-        var kn = ball(0.145, pants); kn.position.y = -0.6; l.add(kn);
-        var sh = cyl(0.13, 0.1, 0.5, pants); sh.position.y = -0.88; l.add(sh);
-        var hem = cyl(0.115, 0.115, 0.08, pantsDk); hem.position.y = -1.12; l.add(hem);
-        var ankle = ball(0.09, skin); ankle.position.y = -1.18; l.add(ankle);
-        var so = box(0.26, 0.1, 0.54, sole); so.position.set(0, -1.32, 0.08); l.add(so);
-        var up2 = box(0.24, 0.16, 0.38, shoe); up2.position.set(0, -1.22, 0.0); l.add(up2);
-        var toe = ball(0.13, sole); toe.scale.set(1, 0.7, 1.1); toe.position.set(0, -1.27, 0.26); l.add(toe);
-        var lace = box(0.18, 0.04, 0.04, white); lace.position.set(0, -1.14, 0.06); l.add(lace);
-        var lace2 = box(0.18, 0.04, 0.04, white); lace2.position.set(0, -1.14, 0.14); l.add(lace2);
+        var kg = new THREE.Group(); kg.position.y = -0.6;                        // pivot: knee
+        kg.add(ball(0.145, pants));                                             // knee joint
+        var sh = cyl(0.13, 0.1, 0.5, pants); sh.position.y = -0.28; kg.add(sh);
+        var hem = cyl(0.115, 0.115, 0.08, pantsDk); hem.position.y = -0.52; kg.add(hem);
+        var ankle = ball(0.09, skin); ankle.position.y = -0.58; kg.add(ankle);
+        var so = box(0.26, 0.1, 0.54, sole); so.position.set(0, -0.72, 0.08); kg.add(so);
+        var up2 = box(0.24, 0.16, 0.38, shoe); up2.position.set(0, -0.62, 0.0); kg.add(up2);
+        var toe = ball(0.13, sole); toe.scale.set(1, 0.7, 1.1); toe.position.set(0, -0.67, 0.26); kg.add(toe);
+        var lace = box(0.18, 0.04, 0.04, white); lace.position.set(0, -0.54, 0.06); kg.add(lace);
+        var lace2 = box(0.18, 0.04, 0.04, white); lace2.position.set(0, -0.54, 0.14); kg.add(lace2);
+        l.add(kg); l.userData.knee = kg;
         return l;
       }
 
@@ -993,6 +1036,7 @@
       g.scale.setScalar(def.scale || 1);
       if (forThumb) return g;
       playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
+      playerHair = hairGrp; playerCoat = coatGrp;
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
     }
@@ -1081,6 +1125,7 @@
       g.scale.setScalar(def.scale || 1);
       if (forThumb) return g;
       playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
+      playerHair = null; playerCoat = null;
       playerVisual = g; player.add(g);
       usingModel = false; mixer = null;
     }
@@ -1334,6 +1379,8 @@
       player.position.set(0, 0, 1);
       obstacles.forEach(function (o) { scene.remove(o); }); obstacles = [];
       coins.forEach(function (c) { scene.remove(c); }); coins = [];
+      boosts.forEach(function (b) { scene.remove(b); }); boosts = [];
+      boostT = { magnet: 0, coins: 0, score: 0 };
       chests.forEach(function (c) { scene.remove(c); }); chests = [];
       for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z);
 
@@ -1389,7 +1436,7 @@
       requestAnimationFrame(animate);
       var dt = Math.min(clock.getDelta(), 0.05);
       if (state === "playing") update(dt);
-      else if (playerVisual) { playerVisual.rotation.y = 0; playerVisual.rotation.x = 0; playerVisual.position.y = 0; }
+      else if (playerVisual) { playerVisual.rotation.y = 0; playerVisual.rotation.x = 0; playerVisual.position.y = 0; if (playerHair) playerHair.rotation.set(0, 0, 0); if (playerCoat) playerCoat.rotation.set(0, 0, 0); }
       renderer.render(scene, camera);
     }
     function update(dt) {
@@ -1410,18 +1457,27 @@
       if (mixer) {
         mixer.update(dt);
       } else {
-        var amp = grounded ? 1.05 : 0.4;
+        var amp = grounded ? 1.05 : 0.45;
         var s = Math.sin(runT), s2 = Math.cos(runT);
-        if (playerLegL) { playerLegL.rotation.x = s * amp; playerLegL.rotation.z = 0.05; }
-        if (playerLegR) { playerLegR.rotation.x = -s * amp; playerLegR.rotation.z = -0.05; }
-        if (playerArmL) { playerArmL.rotation.x = -s * amp * 0.95; playerArmL.rotation.z = 0.14 + s2 * 0.06; }
-        if (playerArmR) { playerArmR.rotation.x = s * amp * 0.95; playerArmR.rotation.z = -0.14 - s2 * 0.06; }
+        // thighs swing in opposition (contralateral gait)
+        if (playerLegL) { playerLegL.rotation.x = s * amp; playerLegL.rotation.z = 0.04;
+          if (playerLegL.userData.knee) playerLegL.userData.knee.rotation.x = Math.max(0, -s) * 1.7 + 0.15; }
+        if (playerLegR) { playerLegR.rotation.x = -s * amp; playerLegR.rotation.z = -0.04;
+          if (playerLegR.userData.knee) playerLegR.userData.knee.rotation.x = Math.max(0, s) * 1.7 + 0.15; }
+        // arms opposite the legs, elbows held bent
+        if (playerArmL) { playerArmL.rotation.x = -s * amp * 0.85; playerArmL.rotation.z = 0.16;
+          if (playerArmL.userData.elbow) playerArmL.userData.elbow.rotation.x = -1.1 - Math.max(0, -s) * 0.5; }
+        if (playerArmR) { playerArmR.rotation.x = s * amp * 0.85; playerArmR.rotation.z = -0.16;
+          if (playerArmR.userData.elbow) playerArmR.userData.elbow.rotation.x = -1.1 - Math.max(0, s) * 0.5; }
         if (playerVisual) {
           playerVisual.rotation.y = Math.PI;                                 // face forward, into the screen
-          playerVisual.position.y = grounded ? Math.abs(Math.sin(runT)) * 0.17 : 0.0;  // bigger bounce
-          playerVisual.rotation.x = grounded ? 0.1 : 0.22;                   // lean / tuck
-          playerVisual.rotation.z = Math.sin(runT) * 0.06;                   // body sway
+          playerVisual.position.y = grounded ? Math.abs(Math.sin(runT)) * 0.18 : 0.0;  // COM bob
+          playerVisual.rotation.x = grounded ? 0.12 : 0.24;                  // lean / tuck
+          playerVisual.rotation.z = Math.sin(runT) * 0.05;                   // body sway
         }
+        // hair swoosh + flowy coat trail, lagging behind the bounce
+        if (playerHair) { playerHair.rotation.x = -0.18 + Math.sin(runT * 2 - 0.6) * 0.12; playerHair.rotation.z = Math.sin(runT) * 0.06; }
+        if (playerCoat) { playerCoat.rotation.x = 0.25 + Math.sin(runT * 2 - 0.8) * 0.3; }
         if (sliding && playerVisual) { playerVisual.position.y = -0.18; playerVisual.rotation.x = 0.75; }
       }
       player.rotation.y = (targetX - player.position.x) * -0.25;
@@ -1443,11 +1499,26 @@
       coins.forEach(function (c) {
         c.position.z += mv; c.rotation.z += dt * 6;
         // coin magnet: pull nearby coins toward the player's lane
-        if (magnetOn && c.userData.alive && c.position.z > -10 && c.position.z < 6) {
+        if (magnetActive() && c.userData.alive && c.position.z > -10 && c.position.z < 6) {
           c.position.x += (player.position.x - c.position.x) * Math.min(1, dt * 5);
         }
         if (c.position.z > 8) { c.position.z -= TRACK_LEN; c.userData.alive = true; c.visible = true; }
       });
+      boosts.forEach(function (g) {
+        g.position.z += mv; g.rotation.y += dt * 2.2; if (g.children[0]) g.children[0].rotation.x += dt * 3;
+        if (magnetActive() && g.userData.alive && g.position.z > -10 && g.position.z < 6) {
+          g.position.x += (player.position.x - g.position.x) * Math.min(1, dt * 5);
+        }
+        var near = Math.abs(g.position.z - player.position.z) < 1.3;
+        var grab = (g.userData.lane === lane && near) || (magnetActive() && near && Math.abs(g.position.x - player.position.x) < 1.0);
+        if (g.userData.alive && grab && player.position.y < 2.6) {
+          g.userData.alive = false; g.visible = false; boostT[g.userData.kind] = BOOST_DURATION;
+        }
+        if (g.position.z > 8) { g.position.z -= TRACK_LEN; g.userData.alive = true; g.visible = true; var bl = (Math.random() * 3) | 0; g.position.x = LANES[bl]; g.userData.lane = bl; }
+      });
+      if (boostT.magnet > 0) boostT.magnet -= dt;
+      if (boostT.coins > 0) boostT.coins -= dt;
+      if (boostT.score > 0) boostT.score -= dt;
       chests.forEach(function (c) {
         c.position.z += mv; c.rotation.y += dt * 1.5;
         if (c.userData.pop > 0) { c.userData.pop -= dt; c.scale.multiplyScalar(1 + dt * 6); }
@@ -1460,9 +1531,14 @@
       if (shieldMesh) { shieldMesh.rotation.y += dt; }
 
       checkCollisions();
-      score = Math.floor(distance * scoreMult) + coinCount * 10;
+      score = Math.floor(distance * scoreFactor()) + coinCount * 10;
       $("scoreVal").textContent = score;
       $("coinVal").textContent = coinCount;
+      var bt = "";
+      if (boostT.magnet > 0) bt += "MAGNET " + Math.ceil(boostT.magnet) + "s  ";
+      if (boostT.coins > 0) bt += "2x COINS " + Math.ceil(boostT.coins) + "s  ";
+      if (boostT.score > 0) bt += "2x SCORE " + Math.ceil(boostT.score) + "s";
+      var bb = $("boostBar"); if (bb) { bb.textContent = bt; bb.style.display = bt ? "" : "none"; }
     }
     function checkCollisions() {
       var pz = player.position.z;
@@ -1486,9 +1562,9 @@
         if (!c.userData.alive) continue;
         var sameLane = c.userData.lane === lane;
         var near = Math.abs(c.position.z - pz) < 1.1;
-        var magnetGrab = magnetOn && Math.abs(c.position.x - player.position.x) < 0.9 && near;
+        var magnetGrab = magnetActive() && Math.abs(c.position.x - player.position.x) < 0.9 && near;
         if ((sameLane && near && player.position.y < 2.2) || magnetGrab) {
-          c.userData.alive = false; c.visible = false; coinCount += coinMult;
+          c.userData.alive = false; c.visible = false; coinCount += coinValue();
         }
       }
       for (var k = 0; k < chests.length; k++) {

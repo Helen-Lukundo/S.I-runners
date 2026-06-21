@@ -1,0 +1,36 @@
+/* S.I Runners service worker — network-first so the newest version always wins online,
+   with cache fallback so the installed app still opens offline. */
+const CACHE = "si-runners-v7.7";
+
+self.addEventListener("install", function (e) { self.skipWaiting(); });
+
+self.addEventListener("activate", function (e) {
+  e.waitUntil((async function () {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener("fetch", function (e) {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  e.respondWith((async function () {
+    try {
+      const res = await fetch(req);
+      if (res && (res.ok || res.type === "opaque")) {
+        const cache = await caches.open(CACHE);
+        cache.put(req, res.clone()).catch(function () {});
+      }
+      return res;
+    } catch (err) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      if (req.mode === "navigate") {
+        const home = (await caches.match("./index.html")) || (await caches.match("./"));
+        if (home) return home;
+      }
+      throw err;
+    }
+  })());
+});

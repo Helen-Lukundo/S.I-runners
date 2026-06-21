@@ -141,6 +141,15 @@
   #levelPill .num { color: #7bdcff; }
   #progWrap { position: fixed; left: 6%; right: 6%; top: 66px; height: 9px; background: rgba(10,4,30,0.6); border: 1px solid rgba(0,240,255,0.3); border-radius: 6px; z-index: 5; overflow: hidden; }
   #hudProg { height: 100%; width: 0%; background: linear-gradient(90deg, #00f0ff, #7b5bff); transition: width 0.12s linear; }
+
+  /* ---------- World selector ---------- */
+  #worldRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 14px; }
+  .worldLabel { font-size: 12px; letter-spacing: 2px; color: #9fb6d6; font-weight: 800; }
+  .worldBtn { cursor: pointer; font-family: inherit; font-weight: 800; letter-spacing: 1px; font-size: 12px; color: #cfe6ff; background: rgba(8,4,24,0.6); border: 1px solid rgba(0,240,255,0.3); border-radius: 20px; padding: 7px 13px; }
+  .worldBtn.active { color: #04010f; background: linear-gradient(90deg,#00f0ff,#7b5bff); border-color: transparent; box-shadow: 0 0 16px rgba(0,240,255,0.5); }
+  /* ---------- Pause ---------- */
+  #pauseBtn { display: none; position: fixed; top: 14px; right: 14px; z-index: 7; cursor: pointer; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(0,240,255,0.4); background: rgba(10,4,30,0.6); color: #bfeaff; font-size: 15px; font-weight: 900; letter-spacing: 1px; box-shadow: 0 0 16px rgba(0,240,255,0.22); }
+  #pauseBtn:active { transform: scale(0.94); }
 </style>
 </head>
 <body>
@@ -162,6 +171,17 @@
     <div class="pill" id="boostBar" style="display:none;"></div>
   </div>
   <div id="progWrap" class="hidden"><div id="hudProg"></div></div>
+  <button id="pauseBtn" title="Pause (P)">❚❚</button>
+
+  <!-- Paused -->
+  <div id="pauseScreen" class="screen hidden">
+    <div class="big">PAUSED</div>
+    <div class="row" style="flex-direction:column;gap:14px;margin-top:8px;">
+      <button class="btn" id="resumeBtn">RESUME</button>
+      <button class="btn ghost" id="pauseRestartBtn">RESTART LEVEL</button>
+      <button class="btn ghost" id="pauseLevelsBtn">LEVELS</button>
+    </div>
+  </div>
 
   <!-- Start -->
   <div id="startScreen" class="screen">
@@ -202,6 +222,12 @@
   <div id="levelScreen" class="screen hidden">
     <button class="cornerBack" id="levelBackBtn">◀ BACK</button>
     <h2>SELECT LEVEL</h2>
+    <div id="worldRow">
+      <span class="worldLabel">WORLD:</span>
+      <button class="worldBtn" data-theme="neotokyo">NEO TOKYO</button>
+      <button class="worldBtn" data-theme="doomsday">DOOMSDAY</button>
+      <button class="worldBtn" data-theme="desert">DESERT</button>
+    </div>
     <div id="levelGrid"></div>
   </div>
 
@@ -267,7 +293,7 @@
     </div>
   </div>
 
-  <div id="version">v6.0</div>
+  <div id="version">v6.4</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -345,7 +371,7 @@
     ];
 
     // ---------- Save data (localStorage) ----------
-    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "", unlocked: 0, levelBest: [] };
+    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "", unlocked: 0, levelBest: [], theme: "neotokyo" };
     function loadSave() {
       try {
         var raw = localStorage.getItem("siRunners3D");
@@ -359,6 +385,7 @@
           save.name = (d.name || "").toString().slice(0, 14);
           save.unlocked = d.unlocked || 0;
           save.levelBest = Array.isArray(d.levelBest) ? d.levelBest : [];
+          save.theme = d.theme || "neotokyo";
           if (save.owned.indexOf("vex") < 0) save.owned.push("vex");
         }
       } catch (e) { /* storage blocked — play without saving */ }
@@ -534,21 +561,40 @@
 
     // ---------- Levels (clear one to unlock the next) ----------
     var LEVELS = [
-      { name: "DOWNTOWN",      goal: 500,  base: 20, max: 34, dens: 0.40 },
-      { name: "NIGHT MARKET",  goal: 650,  base: 24, max: 40, dens: 0.46 },
-      { name: "NEON DISTRICT", goal: 800,  base: 28, max: 46, dens: 0.52 },
-      { name: "HARBOR RUN",    goal: 950,  base: 32, max: 52, dens: 0.58 },
-      { name: "SKY BRIDGE",    goal: 1100, base: 36, max: 58, dens: 0.64 },
-      { name: "DATA CORE",     goal: 1300, base: 40, max: 64, dens: 0.70 },
-      { name: "OVERDRIVE",     goal: 1500, base: 46, max: 70, dens: 0.77 },
-      { name: "FINAL CHASE",   goal: 1800, base: 52, max: 78, dens: 0.84 }
+      { name: "DOWNTOWN",      goal: 1900,  base: 20, max: 34, dens: 0.40 },  // ~1 min
+      { name: "NIGHT MARKET",  goal: 7000,  base: 24, max: 40, dens: 0.46 },  // ~3 min
+      { name: "NEON DISTRICT", goal: 13600, base: 28, max: 46, dens: 0.52 },  // ~5 min
+      { name: "HARBOR RUN",    goal: 21600, base: 32, max: 52, dens: 0.58 },  // ~7 min
+      { name: "SKY BRIDGE",    goal: 31000, base: 36, max: 58, dens: 0.64 },  // ~9 min
+      { name: "DATA CORE",     goal: 41900, base: 40, max: 64, dens: 0.70 },  // ~11 min
+      { name: "OVERDRIVE",     goal: 54200, base: 46, max: 70, dens: 0.77 },  // ~13 min
+      { name: "FINAL CHASE",   goal: 69800, base: 52, max: 78, dens: 0.84 }   // ~15 min
     ];
     var curLevel = 0, curMax = MAX_SPEED, curDens = 0.46, goalDist = 1e9;
+
+    // ---------- Selectable backgrounds ----------
+    var THEMES = {
+      neotokyo: { name: "NEO TOKYO", bg: 0x070b14, fog: 0x0c0f16, fn: 28, ff: 150,
+        sky: ["#1b2a44", "#0c1426", "#04060e"], stars: 0.9,
+        road: 0x101216, pave: 0x17191e, pave2: 0x202329, dirt: 0x4a3320, dirt2: 0x3a2718,
+        glow: 0xcfe0ff, edgeL: 0x3a78c8, edgeR: 0xc86a3a, body: "moon" },
+      doomsday: { name: "DOOMSDAY", bg: 0x0a1206, fog: 0x123012, fn: 16, ff: 105,
+        sky: ["#3a6a22", "#173a10", "#0a1606"], stars: 0.12,
+        road: 0x161a12, pave: 0x1b2114, pave2: 0x232a18, dirt: 0x2a3315, dirt2: 0x1e2810,
+        glow: 0x8bff3a, edgeL: 0x6cff2a, edgeR: 0x9bff3a, body: "toxic" },
+      desert: { name: "DESERT", bg: 0xe8c184, fog: 0xe3bd86, fn: 42, ff: 210,
+        sky: ["#ffd9a0", "#f0b878", "#d98c54"], stars: 0.0,
+        road: 0x9c7c52, pave: 0xc9a86e, pave2: 0xb89a62, dirt: 0xd6ad68, dirt2: 0xc49a55,
+        glow: 0xfff0c0, edgeL: 0xb8915a, edgeR: 0xb8915a, body: "sun" }
+    };
+    var curTheme = "neotokyo";
+    var worldExtra = [];   // sky/stars/skybody/theme-lights, removed on theme switch
 
     function $(id) { return document.getElementById(id); }
 
     function init() {
       loadSave();
+      curTheme = THEMES[save.theme] ? save.theme : "neotokyo";
       lbInit();
 
       scene = new THREE.Scene();
@@ -621,38 +667,54 @@
 
     // ---------- World ----------
     function buildWorld() {
-      // ---- gradient night-sky dome ----
+      var T = THEMES[curTheme] || THEMES.neotokyo;
+      scene.background = new THREE.Color(T.bg);
+      scene.fog = new THREE.Fog(T.fog, T.fn, T.ff);
+
+      // ---- gradient sky dome (per theme) ----
       var skyC = document.createElement("canvas"); skyC.width = 4; skyC.height = 256;
       var sg = skyC.getContext("2d"); var grd = sg.createLinearGradient(0, 0, 0, 256);
-      grd.addColorStop(0.0, "#1b2a44");   // horizon glow (bottom of sphere UV)
-      grd.addColorStop(0.45, "#0c1426");
-      grd.addColorStop(1.0, "#04060e");    // deep top
+      grd.addColorStop(0.0, T.sky[0]);   // horizon glow (bottom of sphere UV)
+      grd.addColorStop(0.45, T.sky[1]);
+      grd.addColorStop(1.0, T.sky[2]);   // deep top
       sg.fillStyle = grd; sg.fillRect(0, 0, 4, 256);
       var skyTex = new THREE.CanvasTexture(skyC);
       var sky = new THREE.Mesh(new THREE.SphereGeometry(320, 32, 16),
         new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }));
-      scene.add(sky);
+      scene.add(sky); worldExtra.push(sky);
 
-      // ---- starfield ----
-      var N = 700, sp = new Float32Array(N * 3);
-      for (var si = 0; si < N; si++) {
-        var th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 300;
-        sp[si*3] = r * Math.sin(ph) * Math.cos(th);
-        sp[si*3+1] = Math.abs(r * Math.cos(ph)) * 0.75 + 25;
-        sp[si*3+2] = r * Math.sin(ph) * Math.sin(th);
+      // ---- starfield (faded out in daylight themes) ----
+      if (T.stars > 0) {
+        var N = 700, sp = new Float32Array(N * 3);
+        for (var si = 0; si < N; si++) {
+          var th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 300;
+          sp[si*3] = r * Math.sin(ph) * Math.cos(th);
+          sp[si*3+1] = Math.abs(r * Math.cos(ph)) * 0.75 + 25;
+          sp[si*3+2] = r * Math.sin(ph) * Math.sin(th);
+        }
+        var starGeo = new THREE.BufferGeometry(); starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+        var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 0.8, sizeAttenuation: true, fog: false, transparent: true, opacity: T.stars }));
+        scene.add(stars); worldExtra.push(stars);
       }
-      var starGeo = new THREE.BufferGeometry(); starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
-      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 0.8, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9 })));
 
-      var roadMat = new THREE.MeshStandardMaterial({ color: 0x101216, metalness: 0.65, roughness: 0.45 });
-      var paveMat = new THREE.MeshStandardMaterial({ color: 0x17191e, metalness: 0.08, roughness: 0.95 });
-      var paveMat2 = new THREE.MeshStandardMaterial({ color: 0x202329, metalness: 0.08, roughness: 0.92 });
-      var glowMat = new THREE.MeshBasicMaterial({ color: 0xcfe0ff });
+      // ---- per-theme fill lighting ----
+      if (curTheme === "doomsday") {
+        var dh = new THREE.HemisphereLight(0x4a7a24, 0x0a1206, 0.7); scene.add(dh); worldExtra.push(dh);
+        var dp = new THREE.PointLight(0x8bff3a, 0.8, 120); dp.position.set(0, 30, -20); scene.add(dp); worldExtra.push(dp);
+      } else if (curTheme === "desert") {
+        var sh = new THREE.HemisphereLight(0xffe6bc, 0xc69a62, 1.05); scene.add(sh); worldExtra.push(sh);
+        var sd = new THREE.DirectionalLight(0xfff0d0, 0.9); sd.position.set(20, 40, -10); scene.add(sd); worldExtra.push(sd);
+      }
+
+      var roadMat = new THREE.MeshStandardMaterial({ color: T.road, metalness: curTheme === "desert" ? 0.05 : 0.6, roughness: curTheme === "desert" ? 0.95 : 0.45 });
+      var paveMat = new THREE.MeshStandardMaterial({ color: T.pave, metalness: 0.08, roughness: 0.95 });
+      var paveMat2 = new THREE.MeshStandardMaterial({ color: T.pave2, metalness: 0.08, roughness: 0.92 });
+      var glowMat = new THREE.MeshBasicMaterial({ color: T.glow });
       var markMat = new THREE.MeshStandardMaterial({ color: 0xc4ccd8, roughness: 0.6, metalness: 0.0, emissive: 0x20262e, emissiveIntensity: 0.2 });
       var grooveMat = new THREE.MeshStandardMaterial({ color: 0x06080c, roughness: 1.0 });
       var metalMat = new THREE.MeshStandardMaterial({ color: 0x161a22, roughness: 0.7, metalness: 0.55 });
-      var dirtMat = new THREE.MeshStandardMaterial({ color: 0x4a3320, roughness: 1.0, metalness: 0.0 });
-      var dirtMat2 = new THREE.MeshStandardMaterial({ color: 0x3a2718, roughness: 1.0, metalness: 0.0 });
+      var dirtMat = new THREE.MeshStandardMaterial({ color: T.dirt, roughness: 1.0, metalness: 0.0 });
+      var dirtMat2 = new THREE.MeshStandardMaterial({ color: T.dirt2, roughness: 1.0, metalness: 0.0 });
       for (var i = 0; i < TRACK_LEN / SEG; i++) {
         var tile = new THREE.Group();
         var road = new THREE.Mesh(new THREE.BoxGeometry(9, 0.4, SEG), roadMat);
@@ -702,7 +764,7 @@
         });
         [-4.4, 4.4].forEach(function (x) {
           var edge = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, SEG),
-            new THREE.MeshBasicMaterial({ color: x < 0 ? 0x3a78c8 : 0xc86a3a }));
+            new THREE.MeshBasicMaterial({ color: x < 0 ? T.edgeL : T.edgeR }));
           edge.position.set(x, 0.1, 0); tile.add(edge);
         });
         tile.position.z = -i * SEG;
@@ -711,19 +773,26 @@
       // realistic city-light colors: warm/cool whites, amber, muted blue/teal, soft red
       var neonPalette = [0xfff1d0, 0xcfe6ff, 0xffb060, 0x6aa9ff, 0x47c9b8, 0xff7a6a, 0xfff4e0];
 
-      // ---- pale moon + soft halo ----
-      var moon = new THREE.Mesh(new THREE.SphereGeometry(20, 32, 32),
-        new THREE.MeshBasicMaterial({ color: 0xeaf0ff }));
-      moon.position.set(-28, 50, -185); scene.add(moon);
-      var moonHalo = new THREE.Mesh(new THREE.SphereGeometry(26, 32, 32),
-        new THREE.MeshBasicMaterial({ color: 0x9fb6e0, transparent: true, opacity: 0.18 }));
-      moonHalo.position.copy(moon.position); scene.add(moonHalo);
+      // ---- sky body: moon / desert sun / toxic orb ----
+      var bodyCol = T.body === "sun" ? 0xfff2cc : (T.body === "toxic" ? 0xbfff5a : 0xeaf0ff);
+      var haloCol = T.body === "sun" ? 0xffcf7a : (T.body === "toxic" ? 0x6cff2a : 0x9fb6e0);
+      var bodyR = T.body === "sun" ? 28 : 20;
+      var moon = new THREE.Mesh(new THREE.SphereGeometry(bodyR, 32, 32),
+        new THREE.MeshBasicMaterial({ color: bodyCol, fog: false }));
+      moon.position.set(-28, 50, -185); scene.add(moon); worldExtra.push(moon);
+      var moonHalo = new THREE.Mesh(new THREE.SphereGeometry(bodyR * 1.5, 32, 32),
+        new THREE.MeshBasicMaterial({ color: haloCol, transparent: true, opacity: T.body === "moon" ? 0.18 : 0.3, fog: false }));
+      moonHalo.position.copy(moon.position); scene.add(moonHalo); worldExtra.push(moonHalo);
 
       // ============================================================
       //  JAPANESE STREET — a deliberate mix of real building types
       //  (machiya townhouses, pagodas, signboard buildings, danchi
       //   apartments, glass towers, shrines) + street lamps.
       // ============================================================
+      // ============================================================
+      //  CITY SCENERY — Neo Tokyo (ruined & irradiated for Doomsday)
+      // ============================================================
+      if (curTheme !== "desert") {
       function jmat(c, e, ei, r, m) { return new THREE.MeshStandardMaterial({ color: c, emissive: e || 0x000000, emissiveIntensity: ei || 0, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.1 : m }); }
       function jlit(c) { return new THREE.MeshBasicMaterial({ color: c }); }
       function jbox(w, h, d, mt) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mt); }
@@ -899,8 +968,110 @@
         car.position.set((Math.random() - 0.5) * 60, car.userData.y, -Math.random() * TRACK_LEN);
         scene.add(car); flyingCars.push(car);
       }
+      if (curTheme === "doomsday") doomsdayPass();
+      } else {
+        buildDesertScenery();
+      }
 
       for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z);
+    }
+
+    // Irradiate the city for Doomsday + add acid pools and barrels
+    function doomsdayPass() {
+      buildings.forEach(function (b) {
+        b.traverse(function (o) {
+          if (o.isMesh && o.material) {
+            var mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach(function (m) {
+              if (m.color) m.color.lerp(new THREE.Color(0x2a3a22), 0.55);
+              if (m.emissive) { m.emissive.setHex(0x2bff1a); m.emissiveIntensity = 0.1; }
+              m.needsUpdate = true;
+            });
+          }
+        });
+      });
+      flyingCars.forEach(function (c) {
+        c.traverse(function (o) {
+          if (o.isMesh && o.material) {
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            ms.forEach(function (m) { if (m.color) m.color.setHex(0x143a10); if (m.emissive) { m.emissive.setHex(0x6cff2a); m.emissiveIntensity = 0.3; } });
+          }
+        });
+      });
+      var acidMat = new THREE.MeshStandardMaterial({ color: 0x6cff2a, emissive: 0x4aff1a, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.85 });
+      var barrelMat = new THREE.MeshStandardMaterial({ color: 0xd9c21a, roughness: 0.5, metalness: 0.4 });
+      var bandMat = new THREE.MeshStandardMaterial({ color: 0x101010, roughness: 0.8 });
+      var hazMat = new THREE.MeshStandardMaterial({ color: 0x6cff2a, emissive: 0x4aff1a, emissiveIntensity: 0.5 });
+      for (var i = 0; i < 26; i++) {
+        var side = i % 2 === 0 ? -1 : 1, g = new THREE.Group();
+        if (i % 3 === 0) {
+          var pool = new THREE.Mesh(new THREE.CircleGeometry(1.4 + Math.random(), 18), acidMat);
+          pool.rotation.x = -Math.PI / 2; pool.position.y = -0.27; g.add(pool);
+        } else {
+          var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 14), barrelMat); barrel.position.y = 0.75; g.add(barrel);
+          [0.45, 1.05].forEach(function (by) { var band = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.12, 14), bandMat); band.position.y = by; g.add(band); });
+          var top = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.08, 14), hazMat); top.position.y = 1.5; g.add(top);
+        }
+        g.position.set(side * (10 + Math.random() * 14), -0.2, -Math.random() * TRACK_LEN);
+        scene.add(g); buildings.push(g);
+      }
+    }
+
+    // Desert scenery: mesas, cacti, dunes, rock arches
+    function buildDesertScenery() {
+      function m(c, r) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.95 : r, metalness: 0.0 }); }
+      var rock = m(0xc08a4a), rockDk = m(0x9c6a36), cactus = m(0x3f7a3a), sand = m(0xd9b066);
+      function mesa() {
+        var g = new THREE.Group(), w = 6 + Math.random() * 8, h = 6 + Math.random() * 12, d = 6 + Math.random() * 8;
+        var b1 = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), rock); b1.position.y = h / 2; g.add(b1);
+        var b2 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, h * 0.5, d * 0.7), rockDk); b2.position.y = h + h * 0.25; g.add(b2);
+        var cap = new THREE.Mesh(new THREE.BoxGeometry(w * 0.72, 0.4, d * 0.72), rock); cap.position.y = h * 1.5 + 0.2; g.add(cap);
+        return g;
+      }
+      function cact() {
+        var g = new THREE.Group();
+        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 3.2, 10), cactus); trunk.position.y = 1.6; g.add(trunk);
+        [-1, 1].forEach(function (s) {
+          var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 1.3, 8), cactus); arm.position.set(s * 0.5, 1.7, 0); arm.rotation.z = s * 0.9; g.add(arm);
+          var up = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 1.0, 8), cactus); up.position.set(s * 0.95, 2.35, 0); g.add(up);
+        });
+        return g;
+      }
+      function dune() {
+        var d = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 5, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), sand);
+        d.scale.set(1.4, 0.35, 1.4); return d;
+      }
+      var makers = [mesa, mesa, cact, cact, cact, dune, dune];
+      for (var s = 0; s < 54; s++) {
+        var side = s % 2 === 0 ? -1 : 1;
+        var o = makers[(Math.random() * makers.length) | 0]();
+        o.position.set(side * (10 + Math.random() * 26), -0.2, -Math.random() * TRACK_LEN);
+        o.scale.multiplyScalar(0.8 + Math.random() * 0.6);
+        scene.add(o); buildings.push(o);
+      }
+      for (var gi = 0; gi < 4; gi++) {
+        var gate = new THREE.Group();
+        [-5, 5].forEach(function (x) { var p = new THREE.Mesh(new THREE.BoxGeometry(1.2, 11, 1.2), rock); p.position.set(x, 5.5, 0); gate.add(p); });
+        var beam = new THREE.Mesh(new THREE.BoxGeometry(12, 1.4, 1.4), rockDk); beam.position.y = 11; gate.add(beam);
+        gate.position.z = -50 - gi * 120;
+        scene.add(gate); gates.push(gate);
+      }
+    }
+
+    // Switch background; rebuilds the world cleanly
+    function setTheme(id) {
+      if (!THEMES[id]) return;
+      curTheme = id; save.theme = id; writeSave();
+      [roadTiles, buildings, gates, flyingCars, obstacles, coins, boosts, chests].forEach(function (arr) { arr.forEach(function (o) { scene.remove(o); }); });
+      roadTiles = []; buildings = []; gates = []; flyingCars = []; obstacles = []; coins = []; boosts = []; chests = [];
+      worldExtra.forEach(function (o) { scene.remove(o); }); worldExtra = [];
+      buildWorld();
+      markWorldButtons();
+      if (state === "demo") startDemo();
+    }
+    function markWorldButtons() {
+      var btns = document.querySelectorAll(".worldBtn");
+      for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("active", btns[i].getAttribute("data-theme") === curTheme);
     }
 
     function maybeSpawn(z, dens) {
@@ -1456,6 +1627,7 @@
     // ---------- Controls ----------
     function bindControls() {
       document.addEventListener("keydown", function (e) {
+        if (e.code === "KeyP" || e.code === "Escape") { togglePause(); return; }
         if (state !== "playing") return;
         if (e.code === "ArrowLeft" || e.code === "KeyA") move(-1);
         else if (e.code === "ArrowRight" || e.code === "KeyD") move(1);
@@ -1485,6 +1657,15 @@
       $("clearLevelsBtn").addEventListener("click", openLevels);
       $("clearRetryBtn").addEventListener("click", startGame);
       $("nextLevelBtn").addEventListener("click", function () { startLevel(curLevel + 1); });
+      $("pauseBtn").addEventListener("click", pauseGame);
+      $("resumeBtn").addEventListener("click", resumeGame);
+      $("pauseRestartBtn").addEventListener("click", startGame);
+      $("pauseLevelsBtn").addEventListener("click", pauseToLevels);
+      var wbtns = document.querySelectorAll(".worldBtn");
+      for (var w = 0; w < wbtns.length; w++) {
+        (function (btn) { btn.addEventListener("click", function () { setTheme(btn.getAttribute("data-theme")); }); })(wbtns[w]);
+      }
+      markWorldButtons();
       var cp = $("charPrev"), cn = $("charNext");
       if (cp) cp.addEventListener("click", function () { cycleChar(-1); });
       if (cn) cn.addEventListener("click", function () { cycleChar(1); });
@@ -1541,6 +1722,7 @@
       if (!hasName()) { showNameGate(); return; }
       stopDemo();
       buildLevelGrid();
+      markWorldButtons();
       $("startScreen").classList.add("hidden");
       $("overScreen").classList.add("hidden");
       $("completeScreen").classList.add("hidden");
@@ -1762,9 +1944,11 @@
       $("levelScreen").classList.add("hidden");
       $("overScreen").classList.add("hidden");
       $("completeScreen").classList.add("hidden");
+      $("pauseScreen").classList.add("hidden");
       $("shopScreen").classList.add("hidden");
       $("hud").classList.remove("hidden");
       $("progWrap").classList.remove("hidden");
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "flex";
       updateHud();
     }
     function setShieldBubble(on) {
@@ -1776,24 +1960,20 @@
       }
     }
     function gameOver() {
-      state = "over";
       save.bank += coinCount;
       if (score > save.best) save.best = score;
       writeSave();
       if (hasName()) lbPush(save.name, save.best);
       setShieldBubble(false);
-      $("overTitle").textContent = "LEVEL " + (curLevel + 1) + " FAILED";
-      $("finalScore").textContent = score;
-      $("finalCoins").textContent = coinCount;
-      $("bestScore").textContent = save.best;
-      var rk = lbRank(save.name);
-      var rl = $("overRank");
-      if (rl) rl.textContent = rk ? ("You are #" + rk + " in the competition") : "";
-      renderComp("overCompList", 5);
-      refreshBankLabels();
-      $("hud").classList.add("hidden");
-      $("progWrap").classList.add("hidden");
-      $("overScreen").classList.remove("hidden");
+      goHome();
+    }
+    function goHome() {
+      state = "menu";
+      ["overScreen", "completeScreen", "shopScreen", "levelScreen", "pauseScreen", "infoScreen", "hud", "progWrap"].forEach(function (id) { var el = $(id); if (el) el.classList.add("hidden"); });
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
+      $("startScreen").classList.remove("hidden");
+      refreshBankLabels(); refreshNameLabels(); renderComp("compList", 5);
+      startDemo();
     }
     function levelComplete() {
       state = "over";
@@ -1815,11 +1995,33 @@
       refreshBankLabels();
       $("hud").classList.add("hidden");
       $("progWrap").classList.add("hidden");
+      var pbC = $("pauseBtn"); if (pbC) pbC.style.display = "none";
       $("completeScreen").classList.remove("hidden");
     }
     function updateHud() {
       var ln = $("hudLevel"); if (ln) ln.textContent = "LV " + (curLevel + 1);
       var pf = $("hudProg"); if (pf) pf.style.width = Math.max(0, Math.min(100, (distance / goalDist) * 100)) + "%";
+    }
+
+    // ---------- Pause ----------
+    function togglePause() { if (state === "playing") pauseGame(); else if (state === "paused") resumeGame(); }
+    function pauseGame() {
+      if (state !== "playing") return;
+      state = "paused";
+      $("pauseScreen").classList.remove("hidden");
+    }
+    function resumeGame() {
+      if (state !== "paused") return;
+      state = "playing";
+      $("pauseScreen").classList.add("hidden");
+    }
+    function pauseToLevels() {
+      state = "menu";
+      $("pauseScreen").classList.add("hidden");
+      $("hud").classList.add("hidden");
+      $("progWrap").classList.add("hidden");
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
+      openLevels();
     }
 
     // ---------- Title-screen demo (the game plays itself) ----------

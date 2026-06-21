@@ -101,6 +101,8 @@
   .pField:focus { border-color: #00f0ff; box-shadow: 0 0 22px rgba(0,240,255,0.4); }
   .pField::placeholder { color: #6a7a90; letter-spacing: 2px; }
   #challengeErr { color: #ff6a8a; font-weight: 800; min-height: 18px; margin-top: 12px; display: none; }
+  .onlineWarn { color: #ffd23e !important; }
+  #lobbyCode { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: clamp(44px, 14vw, 84px); letter-spacing: 10px; color: #00f0ff; text-shadow: 0 0 24px rgba(0,240,255,0.55); margin: 6px 0 14px; }
   #nameErr { display: none; margin-top: 12px; color: #ff5e8a; font-weight: 700; font-size: 13px; letter-spacing: 1px; }
   #nameScreen .ssPlay { position: static; margin-top: 26px; }
 
@@ -307,6 +309,37 @@
     </div>
   </div>
 
+  <!-- 2-player: choose online or offline -->
+  <div id="duelModeScreen" class="screen hidden">
+    <button class="cornerBack" id="duelBackBtn">◀ BACK</button>
+    <h2>2-PLAYER</h2>
+    <div class="nameNote">Play against a friend.</div>
+    <button class="ssPlay" id="onlineModeBtn" style="margin:6px 0 4px;background:linear-gradient(90deg,#2ea8ff,#7b5bff);">🌐 ONLINE — two devices</button>
+    <div class="modeLabel" style="margin:10px 0;">— OR —</div>
+    <button class="ssPlay" id="offlineModeBtn" style="margin:0 0 6px;">📱 OFFLINE — same phone</button>
+  </div>
+
+  <!-- Online: enter name, create or join -->
+  <div id="onlineScreen" class="screen hidden">
+    <button class="cornerBack" id="onlineBackBtn">◀ BACK</button>
+    <h2>ONLINE CHALLENGE</h2>
+    <div id="onlineStatus" class="nameNote">Enter your name, then create a game or join with a code.</div>
+    <input id="onlineName" class="pField" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="YOUR NAME" />
+    <button class="ssPlay" id="onlineCreateBtn" style="margin:14px 0 4px;">＋ CREATE GAME</button>
+    <div class="modeLabel" style="margin:10px 0;">— OR JOIN WITH A CODE —</div>
+    <input id="onlineCode" class="pField" type="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="CODE" style="letter-spacing:8px;" />
+    <button class="ssPlay" id="onlineJoinBtn" style="margin:14px 0 4px;">→ JOIN GAME</button>
+  </div>
+
+  <!-- Online lobby / waiting -->
+  <div id="onlineLobby" class="screen hidden">
+    <button class="cornerBack" id="lobbyHomeBtn">◀ LEAVE</button>
+    <h2>GAME CODE</h2>
+    <div id="lobbyCode">----</div>
+    <div id="lobbyStatus" class="nameNote">Share this code. Waiting for an opponent to join…</div>
+    <button class="ssPlay" id="lobbyStartBtn">START MY RUN</button>
+  </div>
+
   <!-- Shop -->
   <div id="shopScreen" class="screen hidden">
     <button class="cornerBack" id="shopBackBtn">◀ BACK</button>
@@ -369,7 +402,7 @@
     </div>
   </div>
 
-  <div id="version">v7.2</div>
+  <div id="version">v7.3</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -459,7 +492,7 @@
     ];
 
     // ---------- Save data (localStorage) ----------
-    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "", unlocked: 0, levelBest: [], theme: "neotokyo" };
+    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "", unlocked: 0, levelBest: [], theme: "neotokyo", isCreator: false, deviceId: "" };
     function loadSave() {
       try {
         var raw = localStorage.getItem("siRunners3D");
@@ -474,6 +507,8 @@
           save.unlocked = d.unlocked || 0;
           save.levelBest = Array.isArray(d.levelBest) ? d.levelBest : [];
           save.theme = d.theme || "neotokyo";
+          save.isCreator = !!d.isCreator;
+          save.deviceId = d.deviceId || "";
           if (save.owned.indexOf("vex") < 0) save.owned.push("vex");
         }
       } catch (e) { /* storage blocked — play without saving */ }
@@ -524,6 +559,7 @@
     var lbCache = [];          // the list the UI shows
     var lbOnline = false;      // true once Firebase is connected
     var lbRef = null;
+    var fbReady = false, fbDb = null;   // shared Realtime Database handle for online play
 
     function lbLoadLocal() {
       try { var r = localStorage.getItem(LB_KEY); var a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; }
@@ -537,6 +573,7 @@
       if (!configured || typeof firebase === "undefined") { lbCache = lbLoadLocal(); return; }
       try {
         firebase.initializeApp(FIREBASE_CONFIG);
+        fbDb = firebase.database(); fbReady = true;
         lbRef = firebase.database().ref("leaderboard");
         lbRef.on("value", function (snap) {
           var val = snap.val() || {}, arr = [];
@@ -640,6 +677,7 @@
       var e = $("challengeErr"); if (e) e.style.display = "none";
       $("startScreen").classList.add("hidden");
       $("levelScreen").classList.add("hidden");
+      $("duelModeScreen").classList.add("hidden");
       $("challengeScreen").classList.remove("hidden");
       var p1 = $("p1Name"); if (p1) setTimeout(function () { p1.focus(); }, 60);
     }
@@ -685,6 +723,157 @@
     }
     function rematch() { challenge.turn = 1; challenge.s1 = 0; challenge.s2 = 0; showTurn(); }
     function exitChallenge() { challenge = null; goHome(); }
+
+    // ---------- Online challenge (two devices, via Firebase) ----------
+    var online = null;
+    function deviceId() {
+      if (!save.deviceId) { save.deviceId = "d" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); writeSave(); }
+      return save.deviceId;
+    }
+    function makeCode() { var s = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", c = ""; for (var i = 0; i < 4; i++) c += s[(Math.random() * s.length) | 0]; return c; }
+    function reserveName(name, cb) {
+      if (!fbReady || !fbDb) { cb("offline"); return; }
+      var key = lbKey(name), me = deviceId(), ref = fbDb.ref("names/" + key);
+      ref.once("value").then(function (s) {
+        var v = s.val();
+        if (v && v.device && v.device !== me) { cb("taken"); return; }
+        ref.set({ name: name, device: me, t: firebase.database.ServerValue.TIMESTAMP });
+        cb(null);
+      }).catch(function () { cb("error"); });
+    }
+    function openDuelMode() {
+      challenge = null; exitOnline();
+      stopDemo();
+      $("startScreen").classList.add("hidden");
+      $("levelScreen").classList.add("hidden");
+      $("duelModeScreen").classList.remove("hidden");
+    }
+    function openOnline() {
+      $("duelModeScreen").classList.add("hidden");
+      $("onlineName").value = save.name || "";
+      $("onlineCode").value = "";
+      var st = $("onlineStatus");
+      if (!fbReady) { st.textContent = "Online isn't switched on yet — the game's online database needs to be connected. You can still play Offline."; st.className = "onlineWarn"; }
+      else { st.textContent = "Enter your name, then create a game or join with a code."; st.className = ""; }
+      $("onlineScreen").classList.remove("hidden");
+      var ip = $("onlineName"); if (ip) setTimeout(function () { ip.focus(); }, 60);
+    }
+    function onlineCreate() {
+      var st = $("onlineStatus");
+      if (!fbReady) { st.textContent = "Online isn't available until the database is connected."; st.className = "onlineWarn"; return; }
+      var n = cleanName($("onlineName").value), issue = nameIssue(n);
+      if (issue) { st.textContent = issue; st.className = "onlineWarn"; return; }
+      st.className = ""; st.textContent = "Reserving name\u2026";
+      reserveName(n, function (err) {
+        if (err === "taken") { st.className = "onlineWarn"; st.textContent = "That name is taken by another player. Choose a different one."; return; }
+        if (err) { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; return; }
+        var code = makeCode();
+        online = { code: code, role: "host", name: n, resolved: false, played: false, ref: fbDb.ref("challenges/" + code) };
+        online.ref.set({ host: { name: n, score: null }, guest: null, t: firebase.database.ServerValue.TIMESTAMP })
+          .then(function () { attachOnline(); enterLobby(); })
+          .catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't create the game. Try again."; online = null; });
+      });
+    }
+    function onlineJoin() {
+      var st = $("onlineStatus");
+      if (!fbReady) { st.textContent = "Online isn't available until the database is connected."; st.className = "onlineWarn"; return; }
+      var n = cleanName($("onlineName").value), issue = nameIssue(n);
+      if (issue) { st.textContent = issue; st.className = "onlineWarn"; return; }
+      var code = ($("onlineCode").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      if (code.length < 4) { st.className = "onlineWarn"; st.textContent = "Enter the 4-character game code."; return; }
+      st.className = ""; st.textContent = "Joining\u2026";
+      reserveName(n, function (err) {
+        if (err === "taken") { st.className = "onlineWarn"; st.textContent = "That name is taken by another player. Choose a different one."; return; }
+        if (err) { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; return; }
+        var ref = fbDb.ref("challenges/" + code);
+        ref.once("value").then(function (s) {
+          var v = s.val();
+          if (!v || !v.host) { st.className = "onlineWarn"; st.textContent = "No game found with that code."; return; }
+          if (v.host.name && v.host.name.toLowerCase() === n.toLowerCase()) { st.className = "onlineWarn"; st.textContent = "That's the host's name. Use a different one."; return; }
+          if (v.guest && v.guest.name) { st.className = "onlineWarn"; st.textContent = "That game already has two players."; return; }
+          online = { code: code, role: "guest", name: n, resolved: false, played: false, ref: ref };
+          ref.child("guest").set({ name: n, score: null })
+            .then(function () { attachOnline(); enterLobby(); })
+            .catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't join. Try again."; online = null; });
+        }).catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; });
+      });
+    }
+    function attachOnline() {
+      if (!online || !online.ref) return;
+      online.ref.on("value", function (snap) {
+        var v = snap.val(); if (!v || !online) return;
+        var h = v.host || {}, g = v.guest || {};
+        online.hostName = h.name; online.guestName = g.name;
+        var myScore = online.role === "host" ? h.score : g.score;
+        online.played = (myScore != null);
+        if (h.score != null && g.score != null) {
+          if (!online.resolved) { online.resolved = true; showVersus(h.name, h.score | 0, g.name, g.score | 0); }
+        } else {
+          online.resolved = false;
+          if (!$("resultScreen").classList.contains("hidden")) {
+            $("resultScreen").classList.add("hidden");
+            $("onlineLobby").classList.remove("hidden");
+          }
+          if (!$("onlineLobby").classList.contains("hidden")) updateLobby(h, g);
+        }
+      });
+    }
+    function enterLobby() {
+      $("onlineScreen").classList.add("hidden");
+      $("resultScreen").classList.add("hidden");
+      online.resolved = false;
+      $("onlineLobby").classList.remove("hidden");
+      updateLobby(null, null);
+    }
+    function updateLobby(h, g) {
+      if (!online) return;
+      $("lobbyCode").textContent = online.code;
+      var oppName = online.role === "host" ? (g && g.name) : (h && h.name);
+      var oppDone = online.role === "host" ? (g && g.score != null) : (h && h.score != null);
+      var line = $("lobbyStatus");
+      if (!oppName) line.textContent = "Share this code. Waiting for an opponent to join\u2026";
+      else if (!online.played) line.textContent = "Opponent: " + oppName + ". Tap Start when you're ready.";
+      else if (!oppDone) line.textContent = "Your run is in. Waiting for " + oppName + " to finish\u2026";
+      else line.textContent = "Both finished \u2014 results coming up!";
+      var btn = $("lobbyStartBtn"); if (btn) btn.style.display = online.played ? "none" : "";
+    }
+    function onlineStartRun() {
+      $("onlineLobby").classList.add("hidden");
+      startInfinite();
+    }
+    function onlineRunEnded() {
+      state = "over";
+      var sc = Math.floor(distance * scoreFactor()) + coinCount * 10;
+      online.played = true;
+      if (online.ref) online.ref.child(online.role).update({ score: sc });
+      $("hud").classList.add("hidden"); $("progWrap").classList.add("hidden"); $("touchPad").classList.add("hidden");
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
+      $("onlineLobby").classList.remove("hidden");
+      $("lobbyStatus").textContent = "Your score: " + sc + ". Waiting for your opponent to finish\u2026";
+      var b = $("lobbyStartBtn"); if (b) b.style.display = "none";
+    }
+    function showVersus(n1, s1, n2, s2) {
+      state = "over";
+      $("onlineLobby").classList.add("hidden");
+      $("resultWin").textContent = (s1 === s2) ? "IT'S A TIE!" : ((s1 > s2 ? n1 : n2) + " WINS!");
+      $("resultScores").innerHTML = n1 + ": <b>" + s1 + "</b> &nbsp;&middot;&nbsp; " + n2 + ": <b>" + s2 + "</b>";
+      $("hud").classList.add("hidden"); $("progWrap").classList.add("hidden"); $("touchPad").classList.add("hidden");
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
+      $("resultScreen").classList.remove("hidden");
+    }
+    function onlineRematch() {
+      if (!online || !online.ref) return;
+      online.resolved = false; online.played = false;
+      online.ref.child("host").update({ score: null });
+      online.ref.child("guest").update({ score: null });
+      $("resultScreen").classList.add("hidden");
+      $("onlineLobby").classList.remove("hidden");
+      updateLobby(null, null);
+    }
+    function exitOnline() {
+      if (online && online.ref) { try { online.ref.off(); } catch (e) {} }
+      online = null;
+    }
 
     // ---------- Config ----------
     var LANES = [-2.4, 0, 2.4];
@@ -1835,12 +2024,21 @@
       $("clearRetryBtn").addEventListener("click", startGame);
       $("nextLevelBtn").addEventListener("click", function () { startLevel(curLevel + 1); });
       $("infiniteBtn").addEventListener("click", startInfinite);
-      $("challengeBtn").addEventListener("click", openChallenge);
+      $("challengeBtn").addEventListener("click", openDuelMode);
+      $("duelBackBtn").addEventListener("click", openLevels);
+      $("offlineModeBtn").addEventListener("click", openChallenge);
+      $("onlineModeBtn").addEventListener("click", openOnline);
+      $("onlineBackBtn").addEventListener("click", openDuelMode);
+      $("onlineCreateBtn").addEventListener("click", onlineCreate);
+      $("onlineJoinBtn").addEventListener("click", onlineJoin);
+      $("lobbyStartBtn").addEventListener("click", onlineStartRun);
+      $("lobbyHomeBtn").addEventListener("click", function () { exitOnline(); goHome(); });
+      var oc = $("onlineCode"); if (oc) oc.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); onlineJoin(); } });
       $("challengeBackBtn").addEventListener("click", openLevels);
       $("challengeStartBtn").addEventListener("click", startChallenge);
       $("turnStartBtn").addEventListener("click", startChallengeRun);
-      $("rematchBtn").addEventListener("click", rematch);
-      $("resultHomeBtn").addEventListener("click", exitChallenge);
+      $("rematchBtn").addEventListener("click", function () { if (online) onlineRematch(); else rematch(); });
+      $("resultHomeBtn").addEventListener("click", function () { if (online) { exitOnline(); goHome(); } else exitChallenge(); });
       var p1 = $("p1Name"), p2 = $("p2Name");
       if (p1) p1.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); if (p2) p2.focus(); } });
       if (p2) p2.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); startChallenge(); } });
@@ -1919,7 +2117,7 @@
     // ---------- Level select ----------
     function openLevels() {
       if (!hasName()) { showNameGate(); return; }
-      challenge = null;
+      challenge = null; exitOnline();
       stopDemo();
       buildLevelGrid();
       markWorldButtons();
@@ -1930,6 +2128,9 @@
       $("challengeScreen").classList.add("hidden");
       $("turnScreen").classList.add("hidden");
       $("resultScreen").classList.add("hidden");
+      $("duelModeScreen").classList.add("hidden");
+      $("onlineScreen").classList.add("hidden");
+      $("onlineLobby").classList.add("hidden");
       $("levelScreen").classList.remove("hidden");
     }
     function closeLevels() {
@@ -2175,6 +2376,7 @@
     }
     function gameOver() {
       setShieldBubble(false);
+      if (online) { onlineRunEnded(); return; }
       if (challenge) { challengeRunEnded(); return; }
       save.bank += coinCount;
       if (score > save.best) save.best = score;
@@ -2184,7 +2386,8 @@
     }
     function goHome() {
       state = "menu";
-      ["overScreen", "completeScreen", "shopScreen", "levelScreen", "pauseScreen", "infoScreen", "challengeScreen", "turnScreen", "resultScreen", "hud", "progWrap", "touchPad"].forEach(function (id) { var el = $(id); if (el) el.classList.add("hidden"); });
+      exitOnline();
+      ["overScreen", "completeScreen", "shopScreen", "levelScreen", "pauseScreen", "infoScreen", "challengeScreen", "turnScreen", "resultScreen", "duelModeScreen", "onlineScreen", "onlineLobby", "hud", "progWrap", "touchPad"].forEach(function (id) { var el = $(id); if (el) el.classList.add("hidden"); });
       var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
       $("startScreen").classList.remove("hidden");
       refreshBankLabels(); refreshNameLabels(); renderComp("compList", 5);

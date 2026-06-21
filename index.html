@@ -55,7 +55,7 @@
   .cbtn.owned { background: linear-gradient(90deg,#00f0ff,#7b5bff); color:#04010f; }
   .cbtn:disabled { opacity: .45; cursor: not-allowed; }
 
-  #version { position: fixed; right: 10px; bottom: 8px; z-index: 6; color: rgba(150,200,255,0.65); font-size: 12px; letter-spacing: 1px; pointer-events: none; }
+  #version { position: fixed; right: 10px; bottom: 8px; z-index: 12; color: rgba(150,200,255,0.65); font-size: 12px; letter-spacing: 1px; pointer-events: auto; cursor: pointer; padding: 6px 8px; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
   #credit { position: fixed; left: 10px; bottom: 8px; z-index: 6; color: rgba(150,200,255,0.5); font-size: 12px; letter-spacing: 1px; pointer-events: none; }
   #touchHint { margin-top: 14px; color: #8fb6d6; font-size: 14px; }
   #byline { margin-top: 22px; font-size: clamp(15px,4.5vw,22px); letter-spacing: 3px; color: #eaf6ff; }
@@ -369,7 +369,7 @@
     </div>
   </div>
 
-  <div id="version">v7.1</div>
+  <div id="version">v7.2</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -1844,15 +1844,18 @@
       var p1 = $("p1Name"), p2 = $("p2Name");
       if (p1) p1.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); if (p2) p2.focus(); } });
       if (p2) p2.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); startChallenge(); } });
-      var vEl = $("version"), vTaps = 0, vTimer = null;
+      var vEl = $("version"), vTaps = 0, vTimer = null, vReset = null;
+      var vBase = vEl ? vEl.textContent.replace(/ ★$/, "") : "";
+      function showVersion() { if (vEl) vEl.textContent = vBase + (save.isCreator ? " ★" : ""); }
       if (vEl) vEl.addEventListener("click", function () {
-        vTaps++; clearTimeout(vTimer); vTimer = setTimeout(function () { vTaps = 0; }, 1200);
-        if (vTaps >= 5) {
+        vTaps++; clearTimeout(vTimer); vTimer = setTimeout(function () { vTaps = 0; }, 1500);
+        if (vTaps >= 3) {
           vTaps = 0; save.isCreator = !save.isCreator; writeSave();
-          vEl.textContent = vEl.textContent.replace(/ ★$/, "") + (save.isCreator ? " ★" : "");
+          vEl.textContent = save.isCreator ? "CREATOR ON ★" : "CREATOR OFF";
+          clearTimeout(vReset); vReset = setTimeout(showVersion, 1500);
         }
       });
-      if (save.isCreator && vEl) vEl.textContent = vEl.textContent.replace(/ ★$/, "") + " ★";
+      showVersion();
       $("pauseBtn").addEventListener("click", pauseGame);
       $("resumeBtn").addEventListener("click", resumeGame);
       $("pauseRestartBtn").addEventListener("click", startGame);

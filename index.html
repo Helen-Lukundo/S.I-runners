@@ -402,13 +402,14 @@
     </div>
   </div>
 
-  <div id="version">v7.3</div>
+  <div id="version">v7.4</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
   (function () {
     "use strict";
@@ -724,23 +725,12 @@
     function rematch() { challenge.turn = 1; challenge.s1 = 0; challenge.s2 = 0; showTurn(); }
     function exitChallenge() { challenge = null; goHome(); }
 
-    // ---------- Online challenge (two devices, via Firebase) ----------
-    var online = null;
-    function deviceId() {
-      if (!save.deviceId) { save.deviceId = "d" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); writeSave(); }
-      return save.deviceId;
-    }
+    // ---------- Online challenge (two devices, peer-to-peer via PeerJS) ----------
+    var online = null, peer = null, conn = null;
+    function peerReady() { return typeof Peer !== "undefined"; }
     function makeCode() { var s = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", c = ""; for (var i = 0; i < 4; i++) c += s[(Math.random() * s.length) | 0]; return c; }
-    function reserveName(name, cb) {
-      if (!fbReady || !fbDb) { cb("offline"); return; }
-      var key = lbKey(name), me = deviceId(), ref = fbDb.ref("names/" + key);
-      ref.once("value").then(function (s) {
-        var v = s.val();
-        if (v && v.device && v.device !== me) { cb("taken"); return; }
-        ref.set({ name: name, device: me, t: firebase.database.ServerValue.TIMESTAMP });
-        cb(null);
-      }).catch(function () { cb("error"); });
-    }
+    function peerId(code) { return "sirun-v1-" + code; }
+    function onlineSend(obj) { try { if (conn && conn.open) conn.send(obj); } catch (e) {} }
     function openDuelMode() {
       challenge = null; exitOnline();
       stopDemo();
@@ -749,108 +739,133 @@
       $("duelModeScreen").classList.remove("hidden");
     }
     function openOnline() {
+      exitOnline();
       $("duelModeScreen").classList.add("hidden");
       $("onlineName").value = save.name || "";
       $("onlineCode").value = "";
       var st = $("onlineStatus");
-      if (!fbReady) { st.textContent = "Online isn't switched on yet — the game's online database needs to be connected. You can still play Offline."; st.className = "onlineWarn"; }
-      else { st.textContent = "Enter your name, then create a game or join with a code."; st.className = ""; }
+      if (!peerReady()) { st.className = "onlineWarn"; st.textContent = "Online needs an internet connection. Check your connection and reopen Online."; }
+      else { st.className = ""; st.textContent = "Enter your name, then create a game or join with a code."; }
       $("onlineScreen").classList.remove("hidden");
       var ip = $("onlineName"); if (ip) setTimeout(function () { ip.focus(); }, 60);
     }
+    function onlineStatus(msg, warn) { var st = $("onlineStatus"); if (st) { st.textContent = msg; st.className = warn ? "onlineWarn" : ""; } }
     function onlineCreate() {
-      var st = $("onlineStatus");
-      if (!fbReady) { st.textContent = "Online isn't available until the database is connected."; st.className = "onlineWarn"; return; }
+      if (!peerReady()) { onlineStatus("Online needs an internet connection.", true); return; }
       var n = cleanName($("onlineName").value), issue = nameIssue(n);
-      if (issue) { st.textContent = issue; st.className = "onlineWarn"; return; }
-      st.className = ""; st.textContent = "Reserving name\u2026";
-      reserveName(n, function (err) {
-        if (err === "taken") { st.className = "onlineWarn"; st.textContent = "That name is taken by another player. Choose a different one."; return; }
-        if (err) { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; return; }
-        var code = makeCode();
-        online = { code: code, role: "host", name: n, resolved: false, played: false, ref: fbDb.ref("challenges/" + code) };
-        online.ref.set({ host: { name: n, score: null }, guest: null, t: firebase.database.ServerValue.TIMESTAMP })
-          .then(function () { attachOnline(); enterLobby(); })
-          .catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't create the game. Try again."; online = null; });
+      if (issue) { onlineStatus(issue, true); return; }
+      onlineStatus("Creating game\u2026", false);
+      var code = makeCode();
+      online = { role: "host", name: n, code: code, myScore: null, oppScore: null, oppName: null, resolved: false, played: false };
+      try { peer = new Peer(peerId(code)); } catch (e) { onlineStatus("Couldn't start online. Try again.", true); online = null; return; }
+      peer.on("open", function () { enterLobby(); });
+      peer.on("connection", function (c) { conn = c; setupConn(); });
+      peer.on("error", function (e) {
+        if (e && e.type === "unavailable-id") { onlineStatus("Code in use \u2014 tap Create Game again.", true); }
+        else { onlineStatus("Connection problem. Try again.", true); }
+        cleanupPeer();
       });
     }
     function onlineJoin() {
-      var st = $("onlineStatus");
-      if (!fbReady) { st.textContent = "Online isn't available until the database is connected."; st.className = "onlineWarn"; return; }
+      if (!peerReady()) { onlineStatus("Online needs an internet connection.", true); return; }
       var n = cleanName($("onlineName").value), issue = nameIssue(n);
-      if (issue) { st.textContent = issue; st.className = "onlineWarn"; return; }
+      if (issue) { onlineStatus(issue, true); return; }
       var code = ($("onlineCode").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
-      if (code.length < 4) { st.className = "onlineWarn"; st.textContent = "Enter the 4-character game code."; return; }
-      st.className = ""; st.textContent = "Joining\u2026";
-      reserveName(n, function (err) {
-        if (err === "taken") { st.className = "onlineWarn"; st.textContent = "That name is taken by another player. Choose a different one."; return; }
-        if (err) { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; return; }
-        var ref = fbDb.ref("challenges/" + code);
-        ref.once("value").then(function (s) {
-          var v = s.val();
-          if (!v || !v.host) { st.className = "onlineWarn"; st.textContent = "No game found with that code."; return; }
-          if (v.host.name && v.host.name.toLowerCase() === n.toLowerCase()) { st.className = "onlineWarn"; st.textContent = "That's the host's name. Use a different one."; return; }
-          if (v.guest && v.guest.name) { st.className = "onlineWarn"; st.textContent = "That game already has two players."; return; }
-          online = { code: code, role: "guest", name: n, resolved: false, played: false, ref: ref };
-          ref.child("guest").set({ name: n, score: null })
-            .then(function () { attachOnline(); enterLobby(); })
-            .catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't join. Try again."; online = null; });
-        }).catch(function () { st.className = "onlineWarn"; st.textContent = "Couldn't reach the server. Try again."; });
+      if (code.length < 4) { onlineStatus("Enter the 4-character game code.", true); return; }
+      onlineStatus("Joining\u2026", false);
+      online = { role: "guest", name: n, code: code, myScore: null, oppScore: null, oppName: null, resolved: false, played: false };
+      try { peer = new Peer(); } catch (e) { onlineStatus("Couldn't start online. Try again.", true); online = null; return; }
+      peer.on("open", function () {
+        conn = peer.connect(peerId(code), { reliable: true });
+        if (!conn) { onlineStatus("Couldn't reach that game. Try again.", true); return; }
+        setupConn();
+      });
+      peer.on("error", function (e) {
+        if (e && e.type === "peer-unavailable") { onlineStatus("No game found with that code.", true); }
+        else { onlineStatus("Connection problem. Try again.", true); }
+        cleanupPeer();
       });
     }
-    function attachOnline() {
-      if (!online || !online.ref) return;
-      online.ref.on("value", function (snap) {
-        var v = snap.val(); if (!v || !online) return;
-        var h = v.host || {}, g = v.guest || {};
-        online.hostName = h.name; online.guestName = g.name;
-        var myScore = online.role === "host" ? h.score : g.score;
-        online.played = (myScore != null);
-        if (h.score != null && g.score != null) {
-          if (!online.resolved) { online.resolved = true; showVersus(h.name, h.score | 0, g.name, g.score | 0); }
-        } else {
-          online.resolved = false;
-          if (!$("resultScreen").classList.contains("hidden")) {
-            $("resultScreen").classList.add("hidden");
-            $("onlineLobby").classList.remove("hidden");
+    function setupConn() {
+      if (!conn) return;
+      conn.on("open", function () {
+        onlineSend({ type: "hello", name: online.name });
+        if (online.role === "guest") enterLobby();
+      });
+      conn.on("data", function (msg) {
+        if (!msg || !online) return;
+        if (msg.type === "hello") {
+          if (online.role === "host" && msg.name && msg.name.toLowerCase() === online.name.toLowerCase()) {
+            onlineSend({ type: "reject", reason: "name" });
+            return;
           }
-          if (!$("onlineLobby").classList.contains("hidden")) updateLobby(h, g);
+          online.oppName = msg.name || "Player";
+          if (!$("onlineLobby").classList.contains("hidden")) updateLobby();
+        } else if (msg.type === "reject") {
+          cleanupPeer(); online = null;
+          $("onlineLobby").classList.add("hidden");
+          $("onlineScreen").classList.remove("hidden");
+          onlineStatus("That name is taken by the host. Pick another.", true);
+        } else if (msg.type === "score") {
+          online.oppScore = msg.score | 0; checkOnlineResult();
+        } else if (msg.type === "rematch") {
+          online.myScore = null; online.oppScore = null; online.resolved = false; online.played = false;
+          $("resultScreen").classList.add("hidden");
+          $("onlineLobby").classList.remove("hidden");
+          updateLobby();
         }
       });
+      conn.on("close", function () { onlineLost(); });
+      conn.on("error", function () { onlineLost(); });
+    }
+    function onlineLost() {
+      if (!online || online.resolved) return;
+      $("resultScreen").classList.add("hidden");
+      $("onlineLobby").classList.remove("hidden");
+      $("lobbyStatus").textContent = "Opponent disconnected. Leave and try again.";
+      var b = $("lobbyStartBtn"); if (b) b.style.display = "none";
     }
     function enterLobby() {
+      if (!online) return;
       $("onlineScreen").classList.add("hidden");
       $("resultScreen").classList.add("hidden");
-      online.resolved = false;
+      online.resolved = false; online.played = false;
       $("onlineLobby").classList.remove("hidden");
-      updateLobby(null, null);
+      updateLobby();
     }
-    function updateLobby(h, g) {
+    function updateLobby() {
       if (!online) return;
       $("lobbyCode").textContent = online.code;
-      var oppName = online.role === "host" ? (g && g.name) : (h && h.name);
-      var oppDone = online.role === "host" ? (g && g.score != null) : (h && h.score != null);
       var line = $("lobbyStatus");
-      if (!oppName) line.textContent = "Share this code. Waiting for an opponent to join\u2026";
-      else if (!online.played) line.textContent = "Opponent: " + oppName + ". Tap Start when you're ready.";
-      else if (!oppDone) line.textContent = "Your run is in. Waiting for " + oppName + " to finish\u2026";
+      if (!online.oppName) line.textContent = online.role === "host" ? "Share this code. Waiting for an opponent to join\u2026" : "Connecting\u2026";
+      else if (!online.played) line.textContent = "Opponent: " + online.oppName + ". Tap Start when you're ready.";
+      else if (online.oppScore == null) line.textContent = "Your score: " + (online.myScore | 0) + ". Waiting for " + online.oppName + " to finish\u2026";
       else line.textContent = "Both finished \u2014 results coming up!";
-      var btn = $("lobbyStartBtn"); if (btn) btn.style.display = online.played ? "none" : "";
+      var btn = $("lobbyStartBtn");
+      if (btn) btn.style.display = (online.oppName && !online.played) ? "" : "none";
     }
     function onlineStartRun() {
+      if (!online || !online.oppName) return;
       $("onlineLobby").classList.add("hidden");
       startInfinite();
     }
     function onlineRunEnded() {
       state = "over";
       var sc = Math.floor(distance * scoreFactor()) + coinCount * 10;
-      online.played = true;
-      if (online.ref) online.ref.child(online.role).update({ score: sc });
+      online.myScore = sc; online.played = true;
+      onlineSend({ type: "score", score: sc });
       $("hud").classList.add("hidden"); $("progWrap").classList.add("hidden"); $("touchPad").classList.add("hidden");
       var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
       $("onlineLobby").classList.remove("hidden");
-      $("lobbyStatus").textContent = "Your score: " + sc + ". Waiting for your opponent to finish\u2026";
-      var b = $("lobbyStartBtn"); if (b) b.style.display = "none";
+      updateLobby();
+      checkOnlineResult();
+    }
+    function checkOnlineResult() {
+      if (!online || online.resolved) return;
+      if (online.myScore != null && online.oppScore != null) {
+        online.resolved = true;
+        showVersus(online.name, online.myScore | 0, online.oppName || "Player", online.oppScore | 0);
+      } else if (!$("onlineLobby").classList.contains("hidden")) updateLobby();
     }
     function showVersus(n1, s1, n2, s2) {
       state = "over";
@@ -862,16 +877,20 @@
       $("resultScreen").classList.remove("hidden");
     }
     function onlineRematch() {
-      if (!online || !online.ref) return;
-      online.resolved = false; online.played = false;
-      online.ref.child("host").update({ score: null });
-      online.ref.child("guest").update({ score: null });
+      if (!online) return;
+      onlineSend({ type: "rematch" });
+      online.myScore = null; online.oppScore = null; online.resolved = false; online.played = false;
       $("resultScreen").classList.add("hidden");
       $("onlineLobby").classList.remove("hidden");
-      updateLobby(null, null);
+      updateLobby();
+    }
+    function cleanupPeer() {
+      try { if (conn) conn.close(); } catch (e) {}
+      try { if (peer) peer.destroy(); } catch (e) {}
+      conn = null; peer = null;
     }
     function exitOnline() {
-      if (online && online.ref) { try { online.ref.off(); } catch (e) {} }
+      cleanupPeer();
       online = null;
     }
 

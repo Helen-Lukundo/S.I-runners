@@ -59,6 +59,8 @@
   #credit { position: fixed; left: 10px; bottom: 8px; z-index: 6; color: rgba(150,200,255,0.5); font-size: 12px; letter-spacing: 1px; pointer-events: none; }
   #touchHint { margin-top: 14px; color: #8fb6d6; font-size: 14px; }
   #byline { margin-top: 22px; font-size: clamp(15px,4.5vw,22px); letter-spacing: 3px; color: #eaf6ff; }
+  #demoTag { display: none; margin-top: 16px; font-size: 12px; letter-spacing: 3px; color: #9fd9ff; border: 1px solid rgba(0,240,255,0.4); background: rgba(8,4,24,0.5); border-radius: 20px; padding: 5px 14px; animation: demoPulse 1.6s ease-in-out infinite; }
+  @keyframes demoPulse { 50% { opacity: 0.45; } }
   #byline b { background: linear-gradient(90deg,#ffd23e,#ff3ea5); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255,90,180,0.6)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
 
@@ -124,6 +126,21 @@
   .infoRow { background: rgba(10,4,30,0.5); border: 1px solid rgba(120,90,255,0.3); border-radius: 12px; padding: 10px 12px; text-align: left; color: #d6f7ff; font-size: clamp(13px,3.6vw,15px); }
   .infoRow .pic { display: inline-block; width: 24px; }
   .infoRow b { color: #fff; }
+
+  /* ---------- Level select ---------- */
+  #levelGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: min(460px, 92vw); margin-top: 8px; }
+  .levelCard { text-align: left; cursor: pointer; border: 1px solid rgba(0,240,255,0.35); background: rgba(8,4,24,0.6); color: #eaf6ff; border-radius: 14px; padding: 12px 14px; transition: transform .08s ease; font-family: inherit; }
+  .levelCard:active { transform: scale(0.97); }
+  .levelCard.locked { opacity: 0.5; border-color: rgba(120,120,140,0.3); cursor: not-allowed; }
+  .levelCard .lvNum { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 22px; color: #00f0ff; line-height: 1; }
+  .levelCard .lvName { font-weight: 800; letter-spacing: 1px; margin-top: 4px; font-size: 14px; }
+  .levelCard .lvBest { font-size: 12px; color: #ffce5b; margin-top: 6px; }
+  .levelCard .lvLock { font-size: 12px; color: #9fb0c4; margin-top: 6px; }
+
+  /* ---------- Level HUD ---------- */
+  #levelPill .num { color: #7bdcff; }
+  #progWrap { position: fixed; left: 6%; right: 6%; top: 66px; height: 9px; background: rgba(10,4,30,0.6); border: 1px solid rgba(0,240,255,0.3); border-radius: 6px; z-index: 5; overflow: hidden; }
+  #hudProg { height: 100%; width: 0%; background: linear-gradient(90deg, #00f0ff, #7b5bff); transition: width 0.12s linear; }
 </style>
 </head>
 <body>
@@ -140,9 +157,11 @@
 
   <div id="hud" class="hidden">
     <div class="pill">SCORE <span class="num" id="scoreVal">0</span></div>
+    <div class="pill" id="levelPill">◆ <span class="num" id="hudLevel">LV 1</span></div>
     <div class="pill" id="coinPill">◎ <span class="num" id="coinVal">0</span></div>
     <div class="pill" id="boostBar" style="display:none;"></div>
   </div>
+  <div id="progWrap" class="hidden"><div id="hudProg"></div></div>
 
   <!-- Start -->
   <div id="startScreen" class="screen">
@@ -154,6 +173,7 @@
     <div class="title">S.I RUNNERS</div>
     <div class="subtitle">3 &middot; D &middot; C Y B E R</div>
     <div id="byline">A GAME BY <b>SEAN MC</b></div>
+    <div id="demoTag">▶ DEMO &middot; PRESS PLAY</div>
 
     <div class="ssCharPanel">
       <div class="ssPanelTitle">CHARACTER</div>
@@ -176,6 +196,13 @@
       <div class="ssPanelTitle">🏆 COMPETITION</div>
       <div id="compList"></div>
     </div>
+  </div>
+
+  <!-- Level select -->
+  <div id="levelScreen" class="screen hidden">
+    <button class="cornerBack" id="levelBackBtn">◀ BACK</button>
+    <h2>SELECT LEVEL</h2>
+    <div id="levelGrid"></div>
   </div>
 
   <!-- Shop -->
@@ -205,9 +232,9 @@
     </div>
   </div>
 
-  <!-- Game over -->
+  <!-- Level failed -->
   <div id="overScreen" class="screen hidden">
-    <div class="big">SYSTEM CRASH</div>
+    <div class="big" id="overTitle">LEVEL FAILED</div>
     <div class="stat">Score: <b id="finalScore">0</b></div>
     <div class="stat">Coins this run: <b id="finalCoins">0</b></div>
     <div class="stat">Best: <b id="bestScore">0</b></div>
@@ -217,16 +244,36 @@
       <div id="overCompList"></div>
     </div>
     <div class="row">
-      <button class="btn" id="retryBtn">RUN AGAIN</button>
+      <button class="btn" id="retryBtn">RETRY</button>
+      <button class="btn ghost" id="overLevelsBtn">LEVELS</button>
       <button class="btn ghost" id="overShopBtn">SHOP</button>
     </div>
   </div>
 
-  <div id="version">v5.6</div>
+  <!-- Level complete -->
+  <div id="completeScreen" class="screen hidden">
+    <div class="big" id="clearTitle" style="color:#39e08a">LEVEL CLEAR</div>
+    <div class="stat" id="clearSub" style="color:#9fe9c4">Unlocked next level</div>
+    <div class="stat">Score: <b id="clearScore">0</b></div>
+    <div class="stat">Coins this run: <b id="clearCoins">0</b></div>
+    <div class="overComp">
+      <div class="ssPanelTitle" style="text-align:center">🏆 COMPETITION</div>
+      <div id="clearCompList"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="nextLevelBtn">NEXT LEVEL ▶</button>
+      <button class="btn ghost" id="clearRetryBtn">REPLAY</button>
+      <button class="btn ghost" id="clearLevelsBtn">LEVELS</button>
+    </div>
+  </div>
+
+  <div id="version">v6.0</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script>
   (function () {
     "use strict";
@@ -298,7 +345,7 @@
     ];
 
     // ---------- Save data (localStorage) ----------
-    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "" };
+    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "", unlocked: 0, levelBest: [] };
     function loadSave() {
       try {
         var raw = localStorage.getItem("siRunners3D");
@@ -310,6 +357,8 @@
           save.best = d.best || 0;
           save.boosts = d.boosts || [];
           save.name = (d.name || "").toString().slice(0, 14);
+          save.unlocked = d.unlocked || 0;
+          save.levelBest = Array.isArray(d.levelBest) ? d.levelBest : [];
           if (save.owned.indexOf("vex") < 0) save.owned.push("vex");
         }
       } catch (e) { /* storage blocked — play without saving */ }
@@ -325,39 +374,92 @@
     }
 
     /* ============================================================
-       COMPETITION LEADERBOARD
+       COMPETITION LEADERBOARD  (global, shared across all players)
        ------------------------------------------------------------
-       Stores each runner's BEST score. Right now it is per-device
-       (localStorage), so each player sees their own runs.
-       To make it GLOBAL — every player's name and best score shown
-       to everyone — only these two functions need to change:
-         lbFetch(cb)        -> read all {name,score} from the server
-         lbPush(name,score) -> send one best score to the server
-       Swap the localStorage bodies for a fetch() to a free store
-       (e.g. a Firebase Realtime Database). Nothing else changes.
+       Scores are stored in a free Firebase Realtime Database, so
+       every player sees everyone's name and best score, live.
+       Until the database is set up, it automatically falls back to
+       per-device storage (the game still works, just not shared).
+
+       TO TURN ON THE GLOBAL BOARD (about 5 minutes, one time):
+         1. Go to https://console.firebase.google.com and click
+            "Add project". Give it any name. (A free account works.)
+         2. In the left menu open "Build" > "Realtime Database",
+            click "Create Database", pick a location, and choose
+            "Start in test mode".
+         3. Open Project settings (gear icon) > "Your apps" > the
+            web icon "</>". Register an app; Firebase shows a
+            firebaseConfig = { ... } block.
+         4. Copy the apiKey, authDomain, databaseURL, projectId and
+            appId values into FIREBASE_CONFIG below (replace each
+            "PASTE..." value). The databaseURL looks like
+            https://your-app-default-rtdb.firebaseio.com
+         5. Re-upload this file. Done — the board is now global.
+       (Or just send those values to me and I'll paste them in.)
        ============================================================ */
+    var FIREBASE_CONFIG = {
+      apiKey:      "PASTE_API_KEY",
+      authDomain:  "PASTE_AUTH_DOMAIN",
+      databaseURL: "PASTE_DATABASE_URL",
+      projectId:   "PASTE_PROJECT_ID",
+      appId:       "PASTE_APP_ID"
+    };
+
     var LB_KEY = "siRunners3D_lb";
-    var lbCache = [];
-    function lbLoad() {
-      try { var r = localStorage.getItem(LB_KEY); lbCache = r ? JSON.parse(r) : []; }
-      catch (e) { lbCache = []; }
-      if (!Array.isArray(lbCache)) lbCache = [];
-      return lbCache;
+    var lbCache = [];          // the list the UI shows
+    var lbOnline = false;      // true once Firebase is connected
+    var lbRef = null;
+
+    function lbLoadLocal() {
+      try { var r = localStorage.getItem(LB_KEY); var a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; }
+      catch (e) { return []; }
     }
-    function lbFetch(cb) { cb(lbLoad()); }                 // <-- global swap point (read)
-    function lbPush(name, score) {                          // <-- global swap point (write)
-      var list = lbLoad(), found = false;
+    function lbSaveLocal(list) { try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch (e) {} }
+    function lbKey(n) { return String(n).toLowerCase().replace(/[.#$\[\]\/\s]+/g, "_").slice(0, 40) || "anon"; }
+
+    function lbInit() {
+      var configured = FIREBASE_CONFIG.databaseURL && FIREBASE_CONFIG.databaseURL.indexOf("PASTE") < 0;
+      if (!configured || typeof firebase === "undefined") { lbCache = lbLoadLocal(); return; }
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        lbRef = firebase.database().ref("leaderboard");
+        lbRef.on("value", function (snap) {
+          var val = snap.val() || {}, arr = [];
+          Object.keys(val).forEach(function (k) {
+            var e = val[k];
+            if (e && e.name != null && typeof e.score === "number") arr.push({ name: String(e.name).slice(0, 14), score: e.score | 0 });
+          });
+          arr.sort(function (a, b) { return b.score - a.score; });
+          lbCache = arr.slice(0, 50);
+          lbOnline = true;
+          renderComp("compList", 5); renderComp("overCompList", 5);
+        }, function () { lbOnline = false; lbCache = lbLoadLocal(); });
+      } catch (e) { lbOnline = false; lbCache = lbLoadLocal(); }
+    }
+
+    function lbFetch(cb) { cb(lbCache && lbCache.length ? lbCache : lbLoadLocal()); }
+
+    function lbPush(name, score) {
+      // local backup so per-device still works offline
+      var list = lbLoadLocal(), found = false;
       for (var i = 0; i < list.length; i++) {
-        if (list[i].name.toLowerCase() === name.toLowerCase()) {
-          if (score > list[i].score) list[i].score = score;
-          found = true; break;
-        }
+        if (list[i].name.toLowerCase() === name.toLowerCase()) { if (score > list[i].score) list[i].score = score; found = true; break; }
       }
       if (!found) list.push({ name: name, score: score });
       list.sort(function (a, b) { return b.score - a.score; });
       list = list.slice(0, 50);
-      try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch (e) {}
-      lbCache = list;
+      lbSaveLocal(list);
+      if (!lbOnline || !lbRef) { lbCache = list; return; }
+      // online: store this player's BEST score in the shared database
+      try {
+        var key = lbKey(name);
+        lbRef.child(key).once("value").then(function (s) {
+          var cur = s.val();
+          if (!cur || score > (cur.score || 0)) {
+            lbRef.child(key).set({ name: name, score: score | 0, t: firebase.database.ServerValue.TIMESTAMP });
+          }
+        }).catch(function () {});
+      } catch (e) {}
     }
     function lbRank(name) {
       var list = lbCache, n = name.toLowerCase();
@@ -384,6 +486,7 @@
     /* ---------- Name gate (must enter a name before playing) ---------- */
     function hasName() { return !!(save.name && save.name.trim()); }
     function showNameGate() {
+      stopDemo();
       var ip = $("nameInput"); if (ip) ip.value = save.name || "";
       $("nameScreen").classList.remove("hidden");
       $("startScreen").classList.add("hidden");
@@ -401,6 +504,7 @@
       $("nameScreen").classList.add("hidden");
       $("startScreen").classList.remove("hidden");
       renderComp("compList", 5);
+      startDemo();
     }
     function refreshNameLabels() {
       var rt = $("runnerTag"); if (rt) rt.textContent = save.name || "—";
@@ -428,10 +532,24 @@
     var sliding = false, slideT = 0;
     var state = "menu";
 
+    // ---------- Levels (clear one to unlock the next) ----------
+    var LEVELS = [
+      { name: "DOWNTOWN",      goal: 500,  base: 20, max: 34, dens: 0.40 },
+      { name: "NIGHT MARKET",  goal: 650,  base: 24, max: 40, dens: 0.46 },
+      { name: "NEON DISTRICT", goal: 800,  base: 28, max: 46, dens: 0.52 },
+      { name: "HARBOR RUN",    goal: 950,  base: 32, max: 52, dens: 0.58 },
+      { name: "SKY BRIDGE",    goal: 1100, base: 36, max: 58, dens: 0.64 },
+      { name: "DATA CORE",     goal: 1300, base: 40, max: 64, dens: 0.70 },
+      { name: "OVERDRIVE",     goal: 1500, base: 46, max: 70, dens: 0.77 },
+      { name: "FINAL CHASE",   goal: 1800, base: 52, max: 78, dens: 0.84 }
+    ];
+    var curLevel = 0, curMax = MAX_SPEED, curDens = 0.46, goalDist = 1e9;
+
     function $(id) { return document.getElementById(id); }
 
     function init() {
       loadSave();
+      lbInit();
 
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x070b14);
@@ -479,6 +597,7 @@
       refreshBankLabels();
       refreshNameLabels();
       renderComp("compList", 5);
+      startDemo();
       if (!hasName()) showNameGate();
 
       clock = new THREE.Clock();
@@ -784,12 +903,16 @@
       for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z);
     }
 
-    function maybeSpawn(z) {
+    function maybeSpawn(z, dens) {
+      dens = (dens == null) ? 0.46 : dens;
       var r = Math.random();
-      if (r < 0.48) spawnObstacle(z);
-      else if (r < 0.82) spawnCoinRow(z);
-      else if (r < 0.90) spawnChest(z);
-      else if (r < 0.96) spawnBoost(z);
+      if (r < dens) spawnObstacle(z);
+      else {
+        var r2 = Math.random();
+        if (r2 < 0.70) spawnCoinRow(z);
+        else if (r2 < 0.86) spawnChest(z);
+        else spawnBoost(z);
+      }
     }
     function spawnBoost(z) {
       var kinds = [{ kind: "magnet", color: 0xff4d6a }, { kind: "coins", color: 0xffd23e }, { kind: "score", color: 0x39e0ff }];
@@ -906,15 +1029,15 @@
         if (o.isMesh && o.material) {
           var mats = Array.isArray(o.material) ? o.material : [o.material];
           mats.forEach(function (m) {
-            if (m.emissive) { m.emissive.setHex(def.neon); m.emissiveIntensity = 0.5; }
+            if (m.emissive) { m.emissive.setHex(def.neon); m.emissiveIntensity = 0.07; }
             if (m.color && def.body != null) m.color.setHex(def.body);
-            m.metalness = 0.55; m.roughness = 0.45; m.needsUpdate = true;
+            m.metalness = 0.25; m.roughness = 0.62; m.needsUpdate = true;
           });
         }
       });
 
       var g = new THREE.Group(); g.add(root);
-      addAccessory(g, def, targetH);   // unique gear per character
+      addAgentKit(g, def, { hw: 0.34, eyeY: targetH * 0.93, frontZ: 0.47, chestY: targetH * 0.58, chestZ: 0.43, earX: 0.34 });
       playerVisual = g; player.add(g);
       usingModel = true;
 
@@ -926,6 +1049,53 @@
       if (runClip) { runAction = mixer.clipAction(runClip); runAction.play(); }
       var jumpClip = THREE.AnimationClip.findByName(clips, "Jump");
       if (jumpClip) { jumpAction = mixer.clipAction(jumpClip); jumpAction.setLoop(THREE.LoopOnce); jumpAction.clampWhenFinished = true; }
+    }
+
+    // Secret-agent kit: dark sunglasses, earpiece + coiled wire, shirt collar,
+    // necktie (in the character's accent colour) and suit lapels. Used by every character.
+    function addAgentKit(g, def, p) {
+      var lens  = new THREE.MeshStandardMaterial({ color: 0x05070a, metalness: 0.5, roughness: 0.07, emissive: 0x0a0f14, emissiveIntensity: 0.22 });
+      var frame = new THREE.MeshStandardMaterial({ color: 0x0b0b0e, metalness: 0.6, roughness: 0.35 });
+      var tie   = new THREE.MeshStandardMaterial({ color: def.accent, metalness: 0.25, roughness: 0.45, emissive: def.accent, emissiveIntensity: 0.14 });
+      var suit  = new THREE.MeshStandardMaterial({ color: 0x101218, metalness: 0.2, roughness: 0.62 });
+      var shirt = new THREE.MeshStandardMaterial({ color: 0xeef2f6, metalness: 0.0, roughness: 0.7 });
+      var dark  = new THREE.MeshStandardMaterial({ color: 0x070708, metalness: 0.3, roughness: 0.5 });
+      var hw = p.hw, ey = p.eyeY, fz = p.frontZ, cy = p.chestY, cz = p.chestZ, ex = p.earX, span = p.eyeY - p.chestY;
+
+      // sunglasses: two lenses + bridge + temple arms
+      var lensGeo = new THREE.BoxGeometry(hw * 0.92, hw * 0.5, 0.05);
+      var ll = new THREE.Mesh(lensGeo, lens); ll.position.set(-hw * 0.6, ey, fz); g.add(ll);
+      var lr = new THREE.Mesh(lensGeo, lens); lr.position.set( hw * 0.6, ey, fz); g.add(lr);
+      var br = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.35, 0.04, 0.05), frame); br.position.set(0, ey + hw * 0.04, fz); g.add(br);
+      [-1, 1].forEach(function (s) {
+        var tmp = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, hw * 1.0), frame);
+        tmp.position.set(s * hw * 1.02, ey, fz - hw * 0.5); g.add(tmp);
+      });
+
+      // earpiece bud + coiled wire down to the collar
+      var bud = new THREE.Mesh(new THREE.SphereGeometry(hw * 0.16, 12, 10), dark);
+      bud.position.set(ex, ey - 0.02, fz * 0.35); g.add(bud);
+      var curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(ex, ey - 0.05, fz * 0.3),
+        new THREE.Vector3(ex * 1.06, ey - span * 0.45, fz * 0.2),
+        new THREE.Vector3(ex * 0.7, cy + span * 0.18, cz * 0.55),
+        new THREE.Vector3(ex * 0.35, cy, cz * 0.85)
+      ]);
+      var wire = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, hw * 0.05, 6, false), dark); g.add(wire);
+
+      // dress-shirt collar (white V), necktie and dark suit lapels
+      var collarL = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.5, span * 0.3, 0.04), shirt);
+      collarL.position.set(-hw * 0.16, cy + span * 0.62, cz); collarL.rotation.z = 0.5; g.add(collarL);
+      var collarR = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.5, span * 0.3, 0.04), shirt);
+      collarR.position.set( hw * 0.16, cy + span * 0.62, cz); collarR.rotation.z = -0.5; g.add(collarR);
+      var knot = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.34, span * 0.16, 0.06), tie);
+      knot.position.set(0, cy + span * 0.55, cz + 0.02); g.add(knot);
+      var blade = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.4, span * 0.6, 0.04), tie);
+      blade.position.set(0, cy + span * 0.2, cz + 0.015); g.add(blade);
+      [-1, 1].forEach(function (s) {
+        var lap = new THREE.Mesh(new THREE.BoxGeometry(hw * 0.42, span * 0.78, 0.04), suit);
+        lap.position.set(s * hw * 0.5, cy + span * 0.42, cz - 0.005); lap.rotation.z = s * 0.2; g.add(lap);
+      });
     }
 
     // Unique cosmetic gear so characters look like different robots
@@ -1056,13 +1226,13 @@
       var g = new THREE.Group();
       function shade(c, f) { var r = Math.min(255, ((c >> 16) & 255) * f | 0), gg = Math.min(255, ((c >> 8) & 255) * f | 0), bb = Math.min(255, (c & 255) * f | 0); return (r << 16) | (gg << 8) | bb; }
       function ms(c, r, m) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.0 : m }); }
-      var hoodie = ms(def.neon, 0.82), hoodieDk = ms(shade(def.neon, 0.6), 0.85),
+      var hoodie = ms(shade(def.body, 2.0), 0.62, 0.14), hoodieDk = ms(shade(def.body, 1.3), 0.7, 0.1),
           pants = ms(shade(def.body, 2.6), 0.9), pantsDk = ms(shade(def.body, 1.8), 0.92),
           skin = ms(0xc8ced8, 0.45, 0.62), skinDk = ms(0x9098a4, 0.5, 0.55),
-          shoe = ms(def.accent, 0.6, 0.1), sole = ms(0xf2f2f5, 0.7), hair = ms(0x241a16, 0.85),
+          shoe = ms(0x121218, 0.55, 0.2), sole = ms(0x1a1a20, 0.7), hair = ms(0x241a16, 0.85),
           dark = ms(0x1a1a22, 0.8), white = ms(0xf4f4f7, 0.6),
           accent = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1, emissive: def.accent, emissiveIntensity: 0.12 });
-      var cyber = new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 1.3, roughness: 0.35, metalness: 0.7 });
+      var cyber = new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.4, roughness: 0.35, metalness: 0.7 });
       function box(w, h, d, m) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); }
       function cyl(rt, rb, h, m) { return new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 24), m); }
       function ball(r, m) { return new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m); }
@@ -1166,7 +1336,7 @@
       var lR = legGroup(); lR.position.set(0.2, 1.4, 0);
       g.add(aL, aR, lL, lR);
 
-      addAccessory(g, def, 3.05);        // per-character signature gear
+      addAgentKit(g, def, { hw: 0.14, eyeY: 2.85, frontZ: 0.2, chestY: 2.02, chestZ: 0.33, earX: 0.2 });
       g.scale.setScalar(def.scale || 1);
       if (forThumb) return g;
       playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
@@ -1256,6 +1426,7 @@
       var lR = legPart(); lR.position.set(0.22, 1.28, 0);
       g.add(aL, aR, lL, lR);
 
+      addAgentKit(g, def, { hw: 0.15, eyeY: 3.08, frontZ: 0.3, chestY: 2.04, chestZ: 0.26, earX: 0.22 });
       g.scale.setScalar(def.scale || 1);
       if (forThumb) return g;
       playerArmL = aL; playerArmR = aR; playerLegL = lL; playerLegR = lR;
@@ -1301,7 +1472,7 @@
         else { if (dy < -24) jump(); else if (dy > 24) slide(); }
       }, { passive: true });
 
-      $("startBtn").addEventListener("click", startGame);
+      $("startBtn").addEventListener("click", openLevels);
       $("retryBtn").addEventListener("click", startGame);
       var nsb = $("nameSaveBtn"); if (nsb) nsb.addEventListener("click", saveNameFromInput);
       var ni = $("nameInput"); if (ni) ni.addEventListener("keydown", function (e) { if (e.key === "Enter") saveNameFromInput(); });
@@ -1309,12 +1480,17 @@
       $("shopBtn").addEventListener("click", openShop);
       $("overShopBtn").addEventListener("click", openShop);
       $("shopBackBtn").addEventListener("click", closeShop);
+      $("levelBackBtn").addEventListener("click", closeLevels);
+      $("overLevelsBtn").addEventListener("click", openLevels);
+      $("clearLevelsBtn").addEventListener("click", openLevels);
+      $("clearRetryBtn").addEventListener("click", startGame);
+      $("nextLevelBtn").addEventListener("click", function () { startLevel(curLevel + 1); });
       var cp = $("charPrev"), cn = $("charNext");
       if (cp) cp.addEventListener("click", function () { cycleChar(-1); });
       if (cn) cn.addEventListener("click", function () { cycleChar(1); });
       var ib = $("infoBtn"), ibk = $("infoBackBtn");
-      if (ib) ib.addEventListener("click", function () { $("infoScreen").classList.remove("hidden"); });
-      if (ibk) ibk.addEventListener("click", function () { $("infoScreen").classList.add("hidden"); });
+      if (ib) ib.addEventListener("click", function () { stopDemo(); $("infoScreen").classList.remove("hidden"); });
+      if (ibk) ibk.addEventListener("click", function () { $("infoScreen").classList.add("hidden"); startDemo(); });
       updateCharName();
       window.addEventListener("resize", onResize);
     }
@@ -1352,6 +1528,7 @@
       var sb = document.getElementById("startBest"); if (sb) sb.textContent = save.best;
     }
     function openShop() {
+      stopDemo();
       buildShopGrid();
       buildBoostGrid();
       refreshBankLabels();
@@ -1359,10 +1536,43 @@
       $("overScreen").classList.add("hidden");
       $("shopScreen").classList.remove("hidden");
     }
+    // ---------- Level select ----------
+    function openLevels() {
+      if (!hasName()) { showNameGate(); return; }
+      stopDemo();
+      buildLevelGrid();
+      $("startScreen").classList.add("hidden");
+      $("overScreen").classList.add("hidden");
+      $("completeScreen").classList.add("hidden");
+      $("shopScreen").classList.add("hidden");
+      $("levelScreen").classList.remove("hidden");
+    }
+    function closeLevels() {
+      $("levelScreen").classList.add("hidden");
+      $("startScreen").classList.remove("hidden");
+      startDemo();
+    }
+    function buildLevelGrid() {
+      var grid = $("levelGrid"); if (!grid) return; grid.innerHTML = "";
+      LEVELS.forEach(function (L, i) {
+        var unlocked = i <= save.unlocked;
+        var best = save.levelBest[i] || 0;
+        var card = document.createElement("button");
+        card.className = "levelCard" + (unlocked ? "" : " locked");
+        card.innerHTML = '<div class="lvNum">' + (i + 1) + '</div>' +
+          '<div class="lvName">' + L.name + '</div>' +
+          (unlocked ? ('<div class="lvBest">' + (best ? ("Best " + best) : "Not cleared yet") + '</div>')
+                    : '<div class="lvLock">🔒 Locked</div>');
+        if (unlocked) card.onclick = function () { startLevel(i); };
+        else card.disabled = true;
+        grid.appendChild(card);
+      });
+    }
     function closeShop() {
       $("shopScreen").classList.add("hidden");
       $("startScreen").classList.remove("hidden");
       updateCharName();
+      startDemo();
     }
     function hex(n) { return "#" + n.toString(16).padStart(6, "0"); }
     // full-body robot figure for shop cards
@@ -1509,24 +1719,29 @@
     }
 
     // ---------- Flow ----------
-    function startGame() {
+    function startGame() { startLevel(curLevel); }   // retry the current level
+    function startLevel(idx) {
       if (!hasName()) { showNameGate(); return; }
+      idx = Math.max(0, Math.min(LEVELS.length - 1, idx | 0));
+      curLevel = idx;
+      var L = LEVELS[idx];
+      curMax = L.max; curDens = L.dens; goalDist = L.goal;
       lane = 1; targetX = 0; vy = 0; grounded = true;
       sliding = false; slideT = 0;
-      speed = BASE_SPEED; distance = 0; coinCount = 0; score = 0;
+      speed = L.base; distance = 0; coinCount = 0; score = 0;
       player.position.set(0, 0, 1);
       obstacles.forEach(function (o) { scene.remove(o); }); obstacles = [];
       coins.forEach(function (c) { scene.remove(c); }); coins = [];
       boosts.forEach(function (b) { scene.remove(b); }); boosts = [];
       boostT = { magnet: 0, coins: 0, score: 0 };
       chests.forEach(function (c) { scene.remove(c); }); chests = [];
-      for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z);
+      for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z, curDens);
 
       // apply owned boosts
       magnetOn = save.boosts.indexOf("magnet") >= 0;
       shieldArmed = save.boosts.indexOf("shield") >= 0;
       setShieldBubble(shieldArmed);
-      if (save.boosts.indexOf("headstart") >= 0) { distance = 300; invuln = 2.5; }
+      if (save.boosts.indexOf("headstart") >= 0) { invuln = 2.5; }
       else invuln = 0;
 
       // apply this character's power (based on its appearance)
@@ -1534,18 +1749,23 @@
       var pw = charById(save.selected).power;
       if (pw === "magnet") magnetOn = true;
       else if (pw === "shield") { shieldArmed = true; setShieldBubble(true); }
-      else if (pw === "headstart") { distance = Math.max(distance, 300); invuln = Math.max(invuln, 2.5); }
+      else if (pw === "headstart") { invuln = Math.max(invuln, 2.5); }
       else if (pw === "jump") jumpV = JUMP_V * 1.28;
       else if (pw === "coins") coinMult = 2;
       else if (pw === "score") scoreMult = 1.5;
       else if (pw === "revive") extraLives = 1;
 
       state = "playing";
+      var dtag = $("demoTag"); if (dtag) dtag.style.display = "none";
       if (playerVisual) playerVisual.rotation.y = Math.PI; // run facing into the screen: back of the head toward us
       $("startScreen").classList.add("hidden");
+      $("levelScreen").classList.add("hidden");
       $("overScreen").classList.add("hidden");
+      $("completeScreen").classList.add("hidden");
       $("shopScreen").classList.add("hidden");
       $("hud").classList.remove("hidden");
+      $("progWrap").classList.remove("hidden");
+      updateHud();
     }
     function setShieldBubble(on) {
       if (shieldMesh) { player.remove(shieldMesh); shieldMesh = null; }
@@ -1562,6 +1782,7 @@
       writeSave();
       if (hasName()) lbPush(save.name, save.best);
       setShieldBubble(false);
+      $("overTitle").textContent = "LEVEL " + (curLevel + 1) + " FAILED";
       $("finalScore").textContent = score;
       $("finalCoins").textContent = coinCount;
       $("bestScore").textContent = save.best;
@@ -1571,7 +1792,106 @@
       renderComp("overCompList", 5);
       refreshBankLabels();
       $("hud").classList.add("hidden");
+      $("progWrap").classList.add("hidden");
       $("overScreen").classList.remove("hidden");
+    }
+    function levelComplete() {
+      state = "over";
+      save.bank += coinCount;
+      if (score > save.best) save.best = score;
+      save.levelBest[curLevel] = Math.max(save.levelBest[curLevel] || 0, score);
+      var hasNext = curLevel + 1 < LEVELS.length;
+      if (hasNext) save.unlocked = Math.max(save.unlocked, curLevel + 1);
+      writeSave();
+      if (hasName()) lbPush(save.name, save.best);
+      setShieldBubble(false);
+      $("clearTitle").textContent = "LEVEL " + (curLevel + 1) + " CLEAR";
+      $("clearSub").textContent = hasNext ? ("Unlocked: " + LEVELS[curLevel + 1].name) : "You beat the final level!";
+      $("clearScore").textContent = score;
+      $("clearCoins").textContent = coinCount;
+      var nb = $("nextLevelBtn");
+      if (nb) nb.style.display = hasNext ? "" : "none";
+      renderComp("clearCompList", 5);
+      refreshBankLabels();
+      $("hud").classList.add("hidden");
+      $("progWrap").classList.add("hidden");
+      $("completeScreen").classList.remove("hidden");
+    }
+    function updateHud() {
+      var ln = $("hudLevel"); if (ln) ln.textContent = "LV " + (curLevel + 1);
+      var pf = $("hudProg"); if (pf) pf.style.width = Math.max(0, Math.min(100, (distance / goalDist) * 100)) + "%";
+    }
+
+    // ---------- Title-screen demo (the game plays itself) ----------
+    var demoCool = { jump: 0, slide: 0, move: 0 };
+    function startDemo() {
+      lane = 1; targetX = 0; vy = 0; grounded = true; sliding = false; slideT = 0;
+      speed = BASE_SPEED; distance = 0; coinCount = 0; score = 0;
+      curMax = 38; curDens = 0.42; goalDist = 1e9;   // demo never "clears"
+      player.position.set(0, 0, 1);
+      obstacles.forEach(function (o) { scene.remove(o); }); obstacles = [];
+      coins.forEach(function (c) { scene.remove(c); }); coins = [];
+      boosts.forEach(function (b) { scene.remove(b); }); boosts = [];
+      chests.forEach(function (c) { scene.remove(c); }); chests = [];
+      boostT = { magnet: 0, coins: 0, score: 0 };
+      for (var z = -30; z > -TRACK_LEN; z -= SEG) maybeSpawn(z, curDens);
+      magnetOn = false; shieldArmed = false; setShieldBubble(false);
+      jumpV = JUMP_V; coinMult = 1; scoreMult = 1; extraLives = 0;
+      invuln = 1e9;                       // the demo runner never crashes
+      demoCool = { jump: 0, slide: 0, move: 0 };
+      state = "demo";
+      var dtag = $("demoTag"); if (dtag) dtag.style.display = "";
+    }
+    function stopDemo() {
+      if (state === "demo") state = "menu";
+      var dtag = $("demoTag"); if (dtag) dtag.style.display = "none";
+    }
+    function laneClear(L, look) {
+      var pz = player.position.z;
+      for (var i = 0; i < obstacles.length; i++) {
+        var o = obstacles[i];
+        if (o.userData.lane === L && o.position.z > pz - look && o.position.z < pz + 1.0) return false;
+      }
+      return true;
+    }
+    function autoPilot(dt) {
+      var pz = player.position.z;
+      if (demoCool.jump > 0) demoCool.jump -= dt;
+      if (demoCool.slide > 0) demoCool.slide -= dt;
+      if (demoCool.move > 0) demoCool.move -= dt;
+      var look = Math.max(2.4, Math.min(5.4, speed * 0.11));
+      var nearest = null, nd = 1e9;
+      for (var i = 0; i < obstacles.length; i++) {
+        var o = obstacles[i];
+        if (o.userData.lane === lane && o.position.z < pz + 0.6 && o.position.z > pz - 10) {
+          var d = Math.abs(pz - o.position.z);
+          if (d < nd) { nd = d; nearest = o; }
+        }
+      }
+      if (nearest) {
+        var az = nearest.position.z, t = nearest.userData.type;
+        var within = az > pz - look && az < pz + 0.4;
+        if (t === "jump") {
+          if (within && grounded && demoCool.jump <= 0) { jump(); demoCool.jump = 0.5; }
+        } else if (t === "slide") {
+          if (within && grounded && !sliding && demoCool.slide <= 0) { slide(); demoCool.slide = 0.45; }
+        } else if (az > pz - (look + 2.5) && demoCool.move <= 0) {
+          var opts = [];
+          if (lane > 0 && laneClear(lane - 1, look + 2.5)) opts.push(lane - 1);
+          if (lane < 2 && laneClear(lane + 1, look + 2.5)) opts.push(lane + 1);
+          if (opts.length) { var tl = opts[(Math.random() * opts.length) | 0]; move(tl > lane ? 1 : -1); demoCool.move = 0.4; }
+        }
+      } else {
+        if (demoCool.move <= 0 && Math.random() < dt * 0.7) {
+          for (var j = 0; j < coins.length; j++) {
+            var c = coins[j];
+            if (c.userData.alive && c.position.z > pz - 7 && c.position.z < pz - 1 && c.userData.lane !== lane && laneClear(c.userData.lane, 5)) {
+              move(c.userData.lane > lane ? 1 : -1); demoCool.move = 0.5; break;
+            }
+          }
+        }
+        if (demoCool.jump <= 0 && grounded && Math.random() < dt * 0.22) { jump(); demoCool.jump = 1.3; }
+      }
     }
 
     // ---------- Loop ----------
@@ -1579,12 +1899,17 @@
       requestAnimationFrame(animate);
       var dt = Math.min(clock.getDelta(), 0.05);
       if (state === "playing") update(dt);
+      else if (state === "demo") { autoPilot(dt); update(dt); }
       else if (playerVisual) { playerVisual.rotation.y = 0; playerVisual.rotation.x = 0; playerVisual.position.y = 0; if (playerHair) playerHair.rotation.set(0, 0, 0); if (playerCoat) playerCoat.rotation.set(0, 0, 0); }
       renderer.render(scene, camera);
     }
     function update(dt) {
-      speed = Math.min(MAX_SPEED, speed + dt * 0.8);
+      speed = Math.min(curMax, speed + dt * 0.8);
       var mv = speed * dt; distance += mv;
+      if (state === "playing") {
+        updateHud();
+        if (distance >= goalDist) { levelComplete(); return; }
+      }
 
       player.position.x += (targetX - player.position.x) * Math.min(1, dt * 14);
       runT += dt * speed * 0.5;

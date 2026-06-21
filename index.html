@@ -97,6 +97,10 @@
   #nameInput { margin-top: 22px; width: min(320px, 80vw); text-align: center; font-family: inherit; font-weight: 800; letter-spacing: 2px; font-size: 22px; text-transform: uppercase; color: #fff; background: rgba(8,4,24,0.7); border: 1px solid rgba(0,240,255,0.45); border-radius: 14px; padding: 14px 16px; outline: none; box-shadow: 0 0 18px rgba(0,240,255,0.2); }
   #nameInput:focus { border-color: #00f0ff; box-shadow: 0 0 26px rgba(0,240,255,0.45); }
   #nameInput::placeholder { color: #6a7a90; letter-spacing: 2px; }
+  .pField { margin-top: 16px; width: min(320px, 80vw); text-align: center; font-family: inherit; font-weight: 800; letter-spacing: 2px; font-size: 20px; text-transform: uppercase; color: #fff; background: rgba(8,4,24,0.7); border: 1px solid rgba(0,240,255,0.45); border-radius: 14px; padding: 12px 16px; outline: none; }
+  .pField:focus { border-color: #00f0ff; box-shadow: 0 0 22px rgba(0,240,255,0.4); }
+  .pField::placeholder { color: #6a7a90; letter-spacing: 2px; }
+  #challengeErr { color: #ff6a8a; font-weight: 800; min-height: 18px; margin-top: 12px; display: none; }
   #nameErr { display: none; margin-top: 12px; color: #ff5e8a; font-weight: 700; font-size: 13px; letter-spacing: 1px; }
   #nameScreen .ssPlay { position: static; margin-top: 26px; }
 
@@ -147,9 +151,31 @@
   .worldLabel { font-size: 12px; letter-spacing: 2px; color: #9fb6d6; font-weight: 800; }
   .worldBtn { cursor: pointer; font-family: inherit; font-weight: 800; letter-spacing: 1px; font-size: 12px; color: #cfe6ff; background: rgba(8,4,24,0.6); border: 1px solid rgba(0,240,255,0.3); border-radius: 20px; padding: 7px 13px; }
   .worldBtn.active { color: #04010f; background: linear-gradient(90deg,#00f0ff,#7b5bff); border-color: transparent; box-shadow: 0 0 16px rgba(0,240,255,0.5); }
+  #worldRowTop { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; }
+  .modeLabel { font-size: 11px; letter-spacing: 3px; color: #7fb6e0; font-weight: 800; margin-bottom: 12px; }
   /* ---------- Pause ---------- */
-  #pauseBtn { display: none; position: fixed; top: 14px; right: 14px; z-index: 7; cursor: pointer; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(0,240,255,0.4); background: rgba(10,4,30,0.6); color: #bfeaff; font-size: 15px; font-weight: 900; letter-spacing: 1px; box-shadow: 0 0 16px rgba(0,240,255,0.22); }
+  #pauseBtn { display: none; position: fixed; top: 14px; right: 14px; z-index: 8; cursor: pointer; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid rgba(0,240,255,0.6); background: rgba(10,4,30,0.78); color: #bfeaff; font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 800; letter-spacing: 2px; box-shadow: 0 0 18px rgba(0,240,255,0.35); }
   #pauseBtn:active { transform: scale(0.94); }
+
+  /* ---------- On-screen touch controls ---------- */
+  #touchPad { display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 42vh; z-index: 6; pointer-events: none; }
+  body.touch #touchPad:not(.hidden) { display: block; }
+  .tpCluster { position: absolute; bottom: 7vh; display: flex; gap: 16px; pointer-events: none; }
+  .tpCluster.left { left: 20px; }
+  .tpCluster.right { right: 20px; }
+  .tpBtn { pointer-events: auto; width: 76px; height: 76px; border-radius: 50%; border: 2px solid rgba(0,240,255,0.55); background: rgba(10,4,30,0.42); color: #d6f3ff; font-size: 28px; font-weight: 900; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); -webkit-tap-highlight-color: transparent; }
+  .tpBtn:active { background: rgba(0,240,255,0.32); transform: scale(0.93); }
+  @media (max-width: 380px) { .tpBtn { width: 66px; height: 66px; font-size: 24px; } .tpCluster { gap: 12px; } }
+
+  /* ---------- Mobile layout comfort ---------- */
+  @media (max-width: 540px) {
+    .ssCharPanel, .ssCompPanel { width: 43vw; max-width: 220px; padding: 10px; }
+    .ssCharPanel { bottom: 6vh; }
+    .ssCompPanel { bottom: 23vh; }
+    .worldBtn { font-size: 12px; padding: 9px 12px; }
+    .ssCharPanel .ssArrow { width: 44px; height: 44px; }
+    #pauseBtn { padding: 0 14px; font-size: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -171,7 +197,19 @@
     <div class="pill" id="boostBar" style="display:none;"></div>
   </div>
   <div id="progWrap" class="hidden"><div id="hudProg"></div></div>
-  <button id="pauseBtn" title="Pause (P)">❚❚</button>
+  <button id="pauseBtn" title="Pause (P)">❚❚ PAUSE</button>
+
+  <!-- On-screen touch controls (phones) -->
+  <div id="touchPad" class="hidden">
+    <div class="tpCluster left">
+      <button class="tpBtn" id="tpLeft">◀</button>
+      <button class="tpBtn" id="tpRight">▶</button>
+    </div>
+    <div class="tpCluster right">
+      <button class="tpBtn" id="tpJump">▲</button>
+      <button class="tpBtn" id="tpSlide">▼</button>
+    </div>
+  </div>
 
   <!-- Paused -->
   <div id="pauseScreen" class="screen hidden">
@@ -194,6 +232,12 @@
     <div class="subtitle">3 &middot; D &middot; C Y B E R</div>
     <div id="byline">A GAME BY <b>SEAN MC</b></div>
     <div id="demoTag">▶ DEMO &middot; PRESS PLAY</div>
+    <div id="worldRowTop">
+      <span class="worldLabel">WORLD:</span>
+      <button class="worldBtn" data-theme="neotokyo">NEO TOKYO</button>
+      <button class="worldBtn" data-theme="doomsday">DOOMSDAY</button>
+      <button class="worldBtn" data-theme="desert">DESERT</button>
+    </div>
 
     <div class="ssCharPanel">
       <div class="ssPanelTitle">CHARACTER</div>
@@ -210,7 +254,7 @@
       <button class="ssPlay" id="startBtn">PLAY</button>
       <button class="ssIcon" id="muteBtn"><span class="ic">🔊</span><span class="lb">SOUND</span></button>
     </div>
-    <div id="touchHint">◀ ▶ / A D move &middot; ▲ jump &middot; ▼ slide &middot; swipe on phone</div>
+    <div id="touchHint">Keys: ◀ ▶ move &middot; ▲ jump &middot; ▼ slide &nbsp;|&nbsp; Phone: on-screen buttons or swipe</div>
 
     <div class="ssCompPanel">
       <div class="ssPanelTitle">🏆 COMPETITION</div>
@@ -221,14 +265,46 @@
   <!-- Level select -->
   <div id="levelScreen" class="screen hidden">
     <button class="cornerBack" id="levelBackBtn">◀ BACK</button>
-    <h2>SELECT LEVEL</h2>
+    <h2>CHOOSE MODE</h2>
     <div id="worldRow">
       <span class="worldLabel">WORLD:</span>
       <button class="worldBtn" data-theme="neotokyo">NEO TOKYO</button>
       <button class="worldBtn" data-theme="doomsday">DOOMSDAY</button>
       <button class="worldBtn" data-theme="desert">DESERT</button>
     </div>
+    <button class="ssPlay" id="infiniteBtn" style="margin:2px 0 12px;">∞ INFINITE RUN</button>
+    <button class="ssPlay" id="challengeBtn" style="margin:0 0 16px;background:linear-gradient(90deg,#ff5bbd,#7b5bff);">👥 2-PLAYER CHALLENGE</button>
+    <div class="modeLabel">— OR PICK A LEVEL —</div>
     <div id="levelGrid"></div>
+  </div>
+
+  <!-- 2-player challenge: enter names -->
+  <div id="challengeScreen" class="screen hidden">
+    <button class="cornerBack" id="challengeBackBtn">◀ BACK</button>
+    <h2>2-PLAYER CHALLENGE</h2>
+    <div class="nameNote">Two players, one phone, taking turns. Enter both names, then press Challenge. Highest score wins.</div>
+    <input id="p1Name" class="pField" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="PLAYER 1 NAME" />
+    <input id="p2Name" class="pField" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="PLAYER 2 NAME" />
+    <div id="challengeErr"></div>
+    <button class="ssPlay" id="challengeStartBtn">⚔ CHALLENGE</button>
+  </div>
+
+  <!-- turn handoff -->
+  <div id="turnScreen" class="screen hidden">
+    <div id="turnWho" class="big">PLAYER 1</div>
+    <div id="turnName" class="title" style="font-size:clamp(26px,7vw,48px)">—</div>
+    <div class="nameNote" id="turnNote">Get ready. Tap Start, then run as far as you can.</div>
+    <button class="ssPlay" id="turnStartBtn">START RUN</button>
+  </div>
+
+  <!-- challenge result -->
+  <div id="resultScreen" class="screen hidden">
+    <div id="resultWin" class="big">—</div>
+    <div id="resultScores" class="nameNote"></div>
+    <div class="row" style="flex-direction:column;gap:14px;margin-top:8px;">
+      <button class="btn" id="rematchBtn">REMATCH</button>
+      <button class="btn ghost" id="resultHomeBtn">HOME</button>
+    </div>
   </div>
 
   <!-- Shop -->
@@ -293,7 +369,7 @@
     </div>
   </div>
 
-  <div id="version">v6.4</div>
+  <div id="version">v7.1</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -312,7 +388,19 @@
       { id: "nova",    name: "NOVA",    cost: 200,  body: 0x2a0a2e, neon: 0xff2e9a, accent: 0xffd23e, scale: 0.94, acc: "halo" },
       { id: "zenith",  name: "ZENITH",  cost: 500,  body: 0x2e2300, neon: 0xffd23e, accent: 0x00f0ff, scale: 1.10, acc: "crown" },
       { id: "glitch",  name: "GLITCH",  cost: 800,  body: 0x062318, neon: 0x2effc2, accent: 0xff2e9a, scale: 0.90, acc: "antennae" },
-      { id: "phantom", name: "PHANTOM", cost: 1300, body: 0x1c0a36, neon: 0xb14bff, accent: 0x00f0ff, scale: 1.16, acc: "jetpack" }
+      { id: "phantom", name: "PHANTOM", cost: 1300, body: 0x1c0a36, neon: 0xb14bff, accent: 0x00f0ff, scale: 1.16, acc: "jetpack" },
+
+      // ---- African heritage characters (names from across the continent) ----
+      { id: "amara",  name: "AMARA",  cost: 300, body: 0x123a24, neon: 0x39e08a, accent: 0xffd23e, skin: 0x6e4a32, hair: 0x140d08, scale: 1.00, acc: "crown" },
+      { id: "jabari", name: "JABARI", cost: 350, body: 0x10204a, neon: 0x2ea8ff, accent: 0xffcf3e, skin: 0x5a3a26, hair: 0x100a06, scale: 1.06, acc: "armor" },
+      { id: "thandi", name: "THANDI", cost: 400, body: 0x3a0e2a, neon: 0xff5bbd, accent: 0xffd23e, skin: 0x7a5236, hair: 0x150e09, scale: 0.96, acc: "halo" },
+      { id: "kwame",  name: "KWAME",  cost: 450, body: 0x402a00, neon: 0xffd23e, accent: 0x39e08a, skin: 0x4a3020, hair: 0x0e0905, scale: 1.04, acc: "cape" },
+      { id: "nia",    name: "NIA",    cost: 500, body: 0x06302e, neon: 0x2effc2, accent: 0xffae00, skin: 0x8a5e3c, hair: 0x171009, scale: 0.92, slim: 0.85, acc: "antennae" },
+      { id: "sipho",  name: "SIPHO",  cost: 550, body: 0x2a0e44, neon: 0xb14bff, accent: 0xffd23e, skin: 0x5e3c26, hair: 0x120c07, scale: 1.10, acc: "jetpack" },
+      { id: "amina",  name: "AMINA",  cost: 600, body: 0x40060a, neon: 0xff3b3b, accent: 0xffd23e, skin: 0x6e4a30, hair: 0x140b07, scale: 1.00, acc: "spikes" },
+      { id: "tendai", name: "TENDAI", cost: 650, body: 0x3a1a06, neon: 0xff7a2a, accent: 0x2effc2, skin: 0x7e5436, hair: 0x160e08, scale: 0.98, acc: "wings" },
+      { id: "zuberi", name: "ZUBERI", cost: 700, body: 0x241a0c, neon: 0xffae00, accent: 0xff5a1e, skin: 0x4a3422, hair: 0x0e0905, scale: 1.14, acc: "horns" },
+      { id: "adaeze", name: "ADAEZE", cost: 750, body: 0x140a40, neon: 0x6a7bff, accent: 0xffd23e, skin: 0x8a5e3c, hair: 0x171009, scale: 0.94, slim: 0.86, acc: "visor" }
     ];
 
     // ---- 30 extra unlockable characters: each a unique colour + gear ----
@@ -512,6 +600,13 @@
 
     /* ---------- Name gate (must enter a name before playing) ---------- */
     function hasName() { return !!(save.name && save.name.trim()); }
+    function cleanName(v) { return (v || "").replace(/\s+/g, " ").trim().slice(0, 14); }
+    function nameIssue(v) {
+      v = cleanName(v);
+      if (v.length < 2) return "Use at least 2 characters.";
+      if (/creator/i.test(v) && !save.isCreator) return "That name is reserved.";
+      return null;
+    }
     function showNameGate() {
       stopDemo();
       var ip = $("nameInput"); if (ip) ip.value = save.name || "";
@@ -522,9 +617,10 @@
     }
     function saveNameFromInput() {
       var ip = $("nameInput"); if (!ip) return;
-      var v = ip.value.replace(/\s+/g, " ").trim().slice(0, 14);
+      var v = cleanName(ip.value);
       var err = $("nameErr");
-      if (v.length < 2) { if (err) err.style.display = "block"; ip.focus(); return; }
+      var issue = nameIssue(v);
+      if (issue) { if (err) { err.textContent = issue; err.style.display = "block"; } ip.focus(); return; }
       if (err) err.style.display = "none";
       save.name = v; writeSave();
       refreshNameLabels();
@@ -536,6 +632,59 @@
     function refreshNameLabels() {
       var rt = $("runnerTag"); if (rt) rt.textContent = save.name || "—";
     }
+
+    // ---------- Two-player challenge (hot-seat) ----------
+    function openChallenge() {
+      stopDemo();
+      $("p1Name").value = ""; $("p2Name").value = "";
+      var e = $("challengeErr"); if (e) e.style.display = "none";
+      $("startScreen").classList.add("hidden");
+      $("levelScreen").classList.add("hidden");
+      $("challengeScreen").classList.remove("hidden");
+      var p1 = $("p1Name"); if (p1) setTimeout(function () { p1.focus(); }, 60);
+    }
+    function startChallenge() {
+      var e = $("challengeErr");
+      function fail(msg) { if (e) { e.textContent = msg; e.style.display = "block"; } }
+      var n1 = cleanName($("p1Name").value), n2 = cleanName($("p2Name").value);
+      var i1 = nameIssue(n1); if (i1) { return fail("Player 1: " + i1); }
+      var i2 = nameIssue(n2); if (i2) { return fail("Player 2: " + i2); }
+      if (n1.toLowerCase() === n2.toLowerCase()) { return fail("Both players need different names."); }
+      if (e) e.style.display = "none";
+      challenge = { p1: n1, p2: n2, turn: 1, s1: 0, s2: 0 };
+      showTurn();
+    }
+    function showTurn() {
+      state = "menu";
+      $("challengeScreen").classList.add("hidden");
+      $("resultScreen").classList.add("hidden");
+      $("turnWho").textContent = challenge.turn === 1 ? "PLAYER 1" : "PLAYER 2";
+      $("turnName").textContent = challenge.turn === 1 ? challenge.p1 : challenge.p2;
+      $("turnScreen").classList.remove("hidden");
+    }
+    function startChallengeRun() {
+      $("turnScreen").classList.add("hidden");
+      startInfinite();
+    }
+    function challengeRunEnded() {
+      state = "over";
+      var finalScore = Math.floor(distance * scoreFactor()) + coinCount * 10;
+      if (challenge.turn === 1) { challenge.s1 = finalScore; challenge.turn = 2; showTurn(); }
+      else { challenge.s2 = finalScore; showResult(); }
+    }
+    function showResult() {
+      state = "over";
+      var c = challenge;
+      $("resultWin").textContent = (c.s1 === c.s2) ? "IT'S A TIE!" : ((c.s1 > c.s2 ? c.p1 : c.p2) + " WINS!");
+      $("resultScores").innerHTML = c.p1 + ": <b>" + c.s1 + "</b> &nbsp;&middot;&nbsp; " + c.p2 + ": <b>" + c.s2 + "</b>";
+      $("hud").classList.add("hidden");
+      $("progWrap").classList.add("hidden");
+      $("touchPad").classList.add("hidden");
+      var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
+      $("resultScreen").classList.remove("hidden");
+    }
+    function rematch() { challenge.turn = 1; challenge.s1 = 0; challenge.s2 = 0; showTurn(); }
+    function exitChallenge() { challenge = null; goHome(); }
 
     // ---------- Config ----------
     var LANES = [-2.4, 0, 2.4];
@@ -570,7 +719,7 @@
       { name: "OVERDRIVE",     goal: 54200, base: 46, max: 70, dens: 0.77 },  // ~13 min
       { name: "FINAL CHASE",   goal: 69800, base: 52, max: 78, dens: 0.84 }   // ~15 min
     ];
-    var curLevel = 0, curMax = MAX_SPEED, curDens = 0.46, goalDist = 1e9;
+    var curLevel = 0, curMax = MAX_SPEED, curDens = 0.46, goalDist = 1e9, infinite = false, challenge = null;
 
     // ---------- Selectable backgrounds ----------
     var THEMES = {
@@ -1119,8 +1268,25 @@
       chest.userData = { lane: l, alive: true, pop: 0 };
       scene.add(chest); chests.push(chest);
     }
+    function spawnFalling(z, l) {
+      var ob = new THREE.Group();
+      var h = 16 + Math.random() * 6;
+      var rock = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0, 0),
+        new THREE.MeshStandardMaterial({ color: 0x2b2b33, emissive: 0xff5a1e, emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.75, flatShading: true }));
+      rock.position.y = h; ob.add(rock);
+      var fire = new THREE.Mesh(new THREE.SphereGeometry(1.35, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.28 }));
+      fire.position.y = h; ob.add(fire);
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.12, 8, 24),
+        new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.5 }));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; ob.add(ring);
+      ob.position.set(LANES[l], 0, z);
+      ob.userData = { lane: l, type: "block", fall: true, rock: rock, fire: fire, ring: ring, h: h };
+      scene.add(ob); obstacles.push(ob);
+    }
     function spawnObstacle(z) {
       var l = (Math.random() * 3) | 0;
+      if (infinite || curLevel === 7) { spawnFalling(z, l); return; }
       var r = Math.random();
       var type = r < 0.4 ? "jump" : (r < 0.72 ? "slide" : "block");
       var ob = new THREE.Group();
@@ -1399,8 +1565,8 @@
       function ms(c, r, m) { return new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.85 : r, metalness: m == null ? 0.0 : m }); }
       var hoodie = ms(shade(def.body, 2.0), 0.62, 0.14), hoodieDk = ms(shade(def.body, 1.3), 0.7, 0.1),
           pants = ms(shade(def.body, 2.6), 0.9), pantsDk = ms(shade(def.body, 1.8), 0.92),
-          skin = ms(0xc8ced8, 0.45, 0.62), skinDk = ms(0x9098a4, 0.5, 0.55),
-          shoe = ms(0x121218, 0.55, 0.2), sole = ms(0x1a1a20, 0.7), hair = ms(0x241a16, 0.85),
+          skin = ms(def.skin != null ? def.skin : 0xc8ced8, 0.45, 0.62), skinDk = ms(def.skin != null ? shade(def.skin, 0.72) : 0x9098a4, 0.5, 0.55),
+          shoe = ms(0x121218, 0.55, 0.2), sole = ms(0x1a1a20, 0.7), hair = ms(def.hair != null ? def.hair : 0x241a16, 0.85),
           dark = ms(0x1a1a22, 0.8), white = ms(0xf4f4f7, 0.6),
           accent = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1, emissive: def.accent, emissiveIntensity: 0.12 });
       var cyber = new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.4, roughness: 0.35, metalness: 0.7 });
@@ -1626,7 +1792,18 @@
 
     // ---------- Controls ----------
     function bindControls() {
+      if (("ontouchstart" in window) || navigator.maxTouchPoints > 0) document.body.classList.add("touch");
+      function tp(id, fn) {
+        var el = $(id); if (!el) return;
+        el.addEventListener("touchstart", function (e) { e.preventDefault(); e.stopPropagation(); if (state === "playing") fn(); }, { passive: false });
+        el.addEventListener("click", function (e) { e.stopPropagation(); if (state === "playing") fn(); });
+      }
+      tp("tpLeft", function () { move(-1); });
+      tp("tpRight", function () { move(1); });
+      tp("tpJump", function () { jump(); });
+      tp("tpSlide", function () { slide(); });
       document.addEventListener("keydown", function (e) {
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
         if (e.code === "KeyP" || e.code === "Escape") { togglePause(); return; }
         if (state !== "playing") return;
         if (e.code === "ArrowLeft" || e.code === "KeyA") move(-1);
@@ -1657,6 +1834,25 @@
       $("clearLevelsBtn").addEventListener("click", openLevels);
       $("clearRetryBtn").addEventListener("click", startGame);
       $("nextLevelBtn").addEventListener("click", function () { startLevel(curLevel + 1); });
+      $("infiniteBtn").addEventListener("click", startInfinite);
+      $("challengeBtn").addEventListener("click", openChallenge);
+      $("challengeBackBtn").addEventListener("click", openLevels);
+      $("challengeStartBtn").addEventListener("click", startChallenge);
+      $("turnStartBtn").addEventListener("click", startChallengeRun);
+      $("rematchBtn").addEventListener("click", rematch);
+      $("resultHomeBtn").addEventListener("click", exitChallenge);
+      var p1 = $("p1Name"), p2 = $("p2Name");
+      if (p1) p1.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); if (p2) p2.focus(); } });
+      if (p2) p2.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); startChallenge(); } });
+      var vEl = $("version"), vTaps = 0, vTimer = null;
+      if (vEl) vEl.addEventListener("click", function () {
+        vTaps++; clearTimeout(vTimer); vTimer = setTimeout(function () { vTaps = 0; }, 1200);
+        if (vTaps >= 5) {
+          vTaps = 0; save.isCreator = !save.isCreator; writeSave();
+          vEl.textContent = vEl.textContent.replace(/ ★$/, "") + (save.isCreator ? " ★" : "");
+        }
+      });
+      if (save.isCreator && vEl) vEl.textContent = vEl.textContent.replace(/ ★$/, "") + " ★";
       $("pauseBtn").addEventListener("click", pauseGame);
       $("resumeBtn").addEventListener("click", resumeGame);
       $("pauseRestartBtn").addEventListener("click", startGame);
@@ -1720,6 +1916,7 @@
     // ---------- Level select ----------
     function openLevels() {
       if (!hasName()) { showNameGate(); return; }
+      challenge = null;
       stopDemo();
       buildLevelGrid();
       markWorldButtons();
@@ -1727,6 +1924,9 @@
       $("overScreen").classList.add("hidden");
       $("completeScreen").classList.add("hidden");
       $("shopScreen").classList.add("hidden");
+      $("challengeScreen").classList.add("hidden");
+      $("turnScreen").classList.add("hidden");
+      $("resultScreen").classList.add("hidden");
       $("levelScreen").classList.remove("hidden");
     }
     function closeLevels() {
@@ -1901,16 +2101,25 @@
     }
 
     // ---------- Flow ----------
-    function startGame() { startLevel(curLevel); }   // retry the current level
+    function startGame() { if (infinite) startInfinite(); else startLevel(curLevel); }   // retry current mode
     function startLevel(idx) {
       if (!hasName()) { showNameGate(); return; }
       idx = Math.max(0, Math.min(LEVELS.length - 1, idx | 0));
-      curLevel = idx;
+      curLevel = idx; infinite = false;
       var L = LEVELS[idx];
-      curMax = L.max; curDens = L.dens; goalDist = L.goal;
+      curMax = L.max; curDens = L.dens; goalDist = L.goal; speed = L.base;
+      beginRun();
+    }
+    function startInfinite() {
+      if (!hasName()) { showNameGate(); return; }
+      infinite = true;
+      curMax = 74; curDens = 0.50; goalDist = Infinity; speed = 22;
+      beginRun();
+    }
+    function beginRun() {
       lane = 1; targetX = 0; vy = 0; grounded = true;
       sliding = false; slideT = 0;
-      speed = L.base; distance = 0; coinCount = 0; score = 0;
+      distance = 0; coinCount = 0; score = 0;
       player.position.set(0, 0, 1);
       obstacles.forEach(function (o) { scene.remove(o); }); obstacles = [];
       coins.forEach(function (c) { scene.remove(c); }); coins = [];
@@ -1947,8 +2156,10 @@
       $("pauseScreen").classList.add("hidden");
       $("shopScreen").classList.add("hidden");
       $("hud").classList.remove("hidden");
-      $("progWrap").classList.remove("hidden");
+      if (infinite) $("progWrap").classList.add("hidden");
+      else $("progWrap").classList.remove("hidden");
       var pb = $("pauseBtn"); if (pb) pb.style.display = "flex";
+      $("touchPad").classList.remove("hidden");
       updateHud();
     }
     function setShieldBubble(on) {
@@ -1960,16 +2171,17 @@
       }
     }
     function gameOver() {
+      setShieldBubble(false);
+      if (challenge) { challengeRunEnded(); return; }
       save.bank += coinCount;
       if (score > save.best) save.best = score;
       writeSave();
       if (hasName()) lbPush(save.name, save.best);
-      setShieldBubble(false);
       goHome();
     }
     function goHome() {
       state = "menu";
-      ["overScreen", "completeScreen", "shopScreen", "levelScreen", "pauseScreen", "infoScreen", "hud", "progWrap"].forEach(function (id) { var el = $(id); if (el) el.classList.add("hidden"); });
+      ["overScreen", "completeScreen", "shopScreen", "levelScreen", "pauseScreen", "infoScreen", "challengeScreen", "turnScreen", "resultScreen", "hud", "progWrap", "touchPad"].forEach(function (id) { var el = $(id); if (el) el.classList.add("hidden"); });
       var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
       $("startScreen").classList.remove("hidden");
       refreshBankLabels(); refreshNameLabels(); renderComp("compList", 5);
@@ -1996,11 +2208,12 @@
       $("hud").classList.add("hidden");
       $("progWrap").classList.add("hidden");
       var pbC = $("pauseBtn"); if (pbC) pbC.style.display = "none";
+      $("touchPad").classList.add("hidden");
       $("completeScreen").classList.remove("hidden");
     }
     function updateHud() {
-      var ln = $("hudLevel"); if (ln) ln.textContent = "LV " + (curLevel + 1);
-      var pf = $("hudProg"); if (pf) pf.style.width = Math.max(0, Math.min(100, (distance / goalDist) * 100)) + "%";
+      var ln = $("hudLevel"); if (ln) ln.textContent = infinite ? "∞ RUN" : ("LV " + (curLevel + 1));
+      if (!infinite) { var pf = $("hudProg"); if (pf) pf.style.width = Math.max(0, Math.min(100, (distance / goalDist) * 100)) + "%"; }
     }
 
     // ---------- Pause ----------
@@ -2020,6 +2233,7 @@
       $("pauseScreen").classList.add("hidden");
       $("hud").classList.add("hidden");
       $("progWrap").classList.add("hidden");
+      $("touchPad").classList.add("hidden");
       var pb = $("pauseBtn"); if (pb) pb.style.display = "none";
       openLevels();
     }
@@ -2164,6 +2378,13 @@
       });
       obstacles.forEach(function (o) {
         o.position.z += mv;
+        if (o.userData.fall) {
+          var frac = Math.max(0, Math.min(1, (o.position.z + 60) / 60));
+          var fy = (1 - frac) * o.userData.h;
+          if (o.userData.rock) { o.userData.rock.position.y = fy; o.userData.rock.rotation.x += dt * 3; o.userData.rock.rotation.y += dt * 2; }
+          if (o.userData.fire) { o.userData.fire.position.y = fy; o.userData.fire.visible = fy > 0.6; }
+          if (o.userData.ring) o.userData.ring.material.opacity = 0.2 + 0.55 * frac;
+        }
         if (o.position.z > 8) { o.position.z -= TRACK_LEN; var l = (Math.random()*3)|0; o.position.x = LANES[l]; o.userData.lane = l; }
       });
       coins.forEach(function (c) {
@@ -2215,6 +2436,7 @@
       for (var i = 0; i < obstacles.length; i++) {
         var o = obstacles[i];
         if (Math.abs(o.position.z - pz) < 0.9 && o.userData.lane === lane) {
+          if (o.userData.fall && o.userData.rock && o.userData.rock.position.y > 2.6) continue; // still falling, overhead
           var t = o.userData.type;
           var hit = t === "jump" ? (player.position.y < 1.4)      // must jump over
                   : t === "slide" ? (!sliding)                     // must slide under

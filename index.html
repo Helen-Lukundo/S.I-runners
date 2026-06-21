@@ -21,7 +21,7 @@
   .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #eaf6ff; padding: 24px; background: radial-gradient(circle at 50% 35%, rgba(20,4,55,0.55), rgba(3,1,12,0.92)); backdrop-filter: blur(2px); overflow-y: auto; }
   .hidden { display: none !important; }
   .title { font-size: clamp(34px, 10vw, 80px); font-weight: 900; letter-spacing: 3px; background: linear-gradient(90deg, #00f0ff, #b14bff, #ff3ea5); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 18px rgba(120,60,255,0.55)); line-height: 1; }
-  .subtitle { margin-top: 6px; color: #9fd9ff; letter-spacing: 6px; font-size: clamp(12px,3.5vw,18px); }
+  .subtitle { margin-top: 12px; color: #9fd9ff; letter-spacing: 6px; font-size: clamp(12px,3.5vw,18px); }
   .panel { margin-top: 20px; background: rgba(10,4,30,0.5); border: 1px solid rgba(0,240,255,0.35); border-radius: 18px; padding: 16px 22px; max-width: 380px; line-height: 1.6; box-shadow: 0 0 30px rgba(80,40,200,0.25); }
   .panel .key { color: #00f0ff; font-weight: bold; text-shadow: 0 0 8px rgba(0,240,255,0.6); }
   .btn { margin-top: 16px; cursor: pointer; border: none; border-radius: 16px; padding: 15px 38px; font-size: clamp(17px,4.6vw,22px); font-weight: 800; letter-spacing: 2px; color: #04010f; background: linear-gradient(90deg,#00f0ff,#7b5bff); box-shadow: 0 0 26px rgba(0,240,255,0.5); transition: transform .08s ease, box-shadow .2s ease; }
@@ -58,22 +58,22 @@
   #version { position: fixed; right: 10px; bottom: 8px; z-index: 6; color: rgba(150,200,255,0.65); font-size: 12px; letter-spacing: 1px; pointer-events: none; }
   #credit { position: fixed; left: 10px; bottom: 8px; z-index: 6; color: rgba(150,200,255,0.5); font-size: 12px; letter-spacing: 1px; pointer-events: none; }
   #touchHint { margin-top: 14px; color: #8fb6d6; font-size: 14px; }
-  #byline { margin-top: 14px; font-size: clamp(15px,4.5vw,22px); letter-spacing: 3px; color: #eaf6ff; }
+  #byline { margin-top: 22px; font-size: clamp(15px,4.5vw,22px); letter-spacing: 3px; color: #eaf6ff; }
   #byline b { background: linear-gradient(90deg,#ffd23e,#ff3ea5); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255,90,180,0.6)); }
   .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
 
   /* Subway-Surfers-style start layout */
   #startScreen { background: linear-gradient(180deg, rgba(5,1,15,0.6) 0%, rgba(5,1,15,0.12) 32%, rgba(5,1,15,0.12) 58%, rgba(5,1,15,0.82) 100%); backdrop-filter: none; justify-content: flex-start; }
-  #startScreen .title { margin-top: 7vh; }
+  #startScreen .title { margin-top: 10vh; }
   .ssTop { position: absolute; top: 14px; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 16px; pointer-events: none; }
   .ssCounter { background: rgba(10,4,30,0.62); border: 1px solid rgba(255,200,40,0.6); border-radius: 22px; padding: 8px 15px; font-weight: 800; letter-spacing: 1px; color: #ffe79a; text-shadow: 0 0 8px rgba(255,190,40,0.8); font-size: 16px; }
   .ssCounter.best { border-color: rgba(0,240,255,0.55); color: #bfeaff; text-shadow: 0 0 8px rgba(0,240,255,0.7); }
-  .ssBottom { position: absolute; left: 0; right: 0; bottom: 12vh; display: flex; align-items: center; justify-content: center; gap: 20px; }
+  .ssBottom { position: absolute; left: 0; right: 0; bottom: 15vh; display: flex; align-items: center; justify-content: center; gap: 20px; }
   .ssPlay { cursor: pointer; border: none; border-radius: 50px; padding: 18px 56px; font-size: clamp(20px,6vw,30px); font-weight: 900; letter-spacing: 3px; color: #04010f; background: linear-gradient(90deg,#00f0ff,#7b5bff); box-shadow: 0 0 36px rgba(0,240,255,0.6); transition: transform .08s ease; }
   .ssPlay:active { transform: scale(0.95); }
   .ssIcon { cursor: pointer; width: 66px; height: 66px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.45); background: rgba(10,4,30,0.62); color: #9fd9ff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: 0 0 18px rgba(80,40,200,0.25); }
   .ssIcon .ic { font-size: 22px; } .ssIcon .lb { font-size: 9px; letter-spacing: 1px; margin-top: 3px; }
-  #startScreen #touchHint { position: absolute; bottom: 5.5vh; left: 0; right: 0; text-align: center; margin: 0; }
+  #startScreen #touchHint { position: absolute; bottom: 3.5vh; left: 0; right: 0; text-align: center; margin: 0; }
   .ssCharBar { position: absolute; left: 0; right: 0; bottom: 23vh; display: flex; align-items: center; justify-content: center; gap: 16px; }
   .ssArrow { cursor: pointer; width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(0,240,255,0.5); background: rgba(10,4,30,0.6); color: #9fd9ff; font-size: 20px; box-shadow: 0 0 16px rgba(80,40,200,0.3); }
   .ssArrow:active { transform: scale(0.92); }
@@ -81,7 +81,7 @@
   .ssCharCol { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 180px; }
   .ssCharPower { font-size: clamp(11px,3.2vw,13px); letter-spacing: 1px; color: #ffe79a; text-shadow: 0 0 8px rgba(255,190,40,0.7); }
   .ssInfo { position: absolute; left: 50%; transform: translateX(-50%); bottom: 19vh; cursor: pointer; border: 1px solid rgba(0,240,255,0.45); background: rgba(10,4,30,0.6); color: #9fd9ff; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
-  .ssCharPanel { position: absolute; left: 14px; bottom: 9vh; width: 232px; max-width: 62vw; background: rgba(8,4,24,0.62); border: 1px solid rgba(0,240,255,0.32); border-radius: 16px; padding: 12px 12px 14px; backdrop-filter: blur(3px); box-shadow: 0 0 22px rgba(80,40,200,0.25); text-align: left; }
+  .ssCharPanel { position: absolute; left: 14px; bottom: 7vh; width: 232px; max-width: 62vw; background: rgba(8,4,24,0.62); border: 1px solid rgba(0,240,255,0.32); border-radius: 16px; padding: 12px 12px 14px; backdrop-filter: blur(3px); box-shadow: 0 0 22px rgba(80,40,200,0.25); text-align: left; }
   .ssPanelTitle { font-size: 11px; letter-spacing: 3px; color: #7fb6e0; font-weight: 800; margin-bottom: 8px; }
   .ssPanelHead { display: flex; align-items: center; gap: 8px; }
   .ssCharPanel .ssArrow { width: 40px; height: 40px; font-size: 16px; flex: 0 0 auto; }
@@ -89,6 +89,34 @@
   .ssCharPanel .ssCharPower { margin-top: 8px; text-align: center; }
   .ssCharPanel .ssInfo { position: static; transform: none; left: auto; bottom: auto; display: block; width: 100%; margin-top: 10px; text-align: center; }
   .cornerBack { position: absolute; top: 14px; right: 14px; z-index: 12; cursor: pointer; border: 1px solid rgba(0,240,255,0.5); background: rgba(10,4,30,0.7); color: #bfeaff; border-radius: 22px; padding: 9px 16px; font-weight: 800; letter-spacing: 1px; font-size: 14px; box-shadow: 0 0 16px rgba(0,240,255,0.25); }
+
+  /* ---------- Name gate ---------- */
+  .nameNote { max-width: 360px; margin: 16px auto 0; font-size: 15px; line-height: 1.55; color: #c7d6ea; }
+  #nameInput { margin-top: 22px; width: min(320px, 80vw); text-align: center; font-family: inherit; font-weight: 800; letter-spacing: 2px; font-size: 22px; text-transform: uppercase; color: #fff; background: rgba(8,4,24,0.7); border: 1px solid rgba(0,240,255,0.45); border-radius: 14px; padding: 14px 16px; outline: none; box-shadow: 0 0 18px rgba(0,240,255,0.2); }
+  #nameInput:focus { border-color: #00f0ff; box-shadow: 0 0 26px rgba(0,240,255,0.45); }
+  #nameInput::placeholder { color: #6a7a90; letter-spacing: 2px; }
+  #nameErr { display: none; margin-top: 12px; color: #ff5e8a; font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+  #nameScreen .ssPlay { position: static; margin-top: 26px; }
+
+  /* ---------- Runner chip on start screen ---------- */
+  #runnerChip { display: inline-flex; align-items: center; gap: 6px; max-width: 46vw; }
+  #runnerTag { font-weight: 900; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30vw; }
+  #editNameBtn { cursor: pointer; border: none; background: transparent; color: #7fb6e0; font-size: 13px; padding: 2px 4px; line-height: 1; }
+
+  /* ---------- Competition board ---------- */
+  .ssCompPanel { position: absolute; right: 14px; bottom: 7vh; width: 232px; max-width: 62vw; background: rgba(8,4,24,0.62); border: 1px solid rgba(255,206,61,0.34); border-radius: 16px; padding: 12px; backdrop-filter: blur(3px); box-shadow: 0 0 22px rgba(180,140,40,0.22); text-align: left; }
+  .ssCompPanel .ssPanelTitle { color: #ffce5b; }
+  .compRow { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 8px; font-size: 14px; }
+  .compRow + .compRow { margin-top: 2px; }
+  .compRow .compRank { flex: 0 0 20px; text-align: center; font-weight: 900; color: #ffce5b; font-size: 13px; }
+  .compRow .compName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: #eaf6ff; letter-spacing: 0.5px; }
+  .compRow .compScore { flex: 0 0 auto; font-weight: 900; color: #fff; }
+  .compRow.me { background: rgba(0,240,255,0.14); border: 1px solid rgba(0,240,255,0.4); }
+  .compRow.me .compName { color: #00f0ff; }
+  .compEmpty { font-size: 13px; color: #9fb0c4; padding: 6px; }
+  #overRank { margin-top: 10px; font-weight: 900; letter-spacing: 1px; color: #ffce5b; text-shadow: 0 0 12px rgba(255,206,61,0.5); }
+  .overComp { margin-top: 14px; width: min(300px, 84vw); background: rgba(8,4,24,0.5); border: 1px solid rgba(255,206,61,0.28); border-radius: 14px; padding: 10px 12px; }
+  @media (max-width: 540px) { .ssCompPanel { bottom: 24vh; width: 200px; } .ssCharPanel { width: 200px; } }
   .cornerBack:active { transform: scale(0.95); }
   #infoScreen .infoNote { max-width: 440px; margin-top: 10px; line-height: 1.55; color: #d6f7ff; font-size: clamp(13px,3.6vw,16px); }
   #infoScreen .infoNote b { color: #00f0ff; }
@@ -101,6 +129,15 @@
 <body>
   <div id="game"></div>
 
+  <!-- Name gate (must enter a name before playing) -->
+  <div id="nameScreen" class="screen hidden">
+    <div class="title" style="font-size:clamp(28px,8vw,56px)">WHO'S RUNNING?</div>
+    <div class="nameNote">Enter a runner name. It shows on the <b>Competition</b> board with your best score.</div>
+    <input id="nameInput" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="YOUR NAME" />
+    <div id="nameErr">Use at least 2 characters.</div>
+    <button class="ssPlay" id="nameSaveBtn">ENTER</button>
+  </div>
+
   <div id="hud" class="hidden">
     <div class="pill">SCORE <span class="num" id="scoreVal">0</span></div>
     <div class="pill" id="coinPill">◎ <span class="num" id="coinVal">0</span></div>
@@ -111,6 +148,7 @@
   <div id="startScreen" class="screen">
     <div class="ssTop">
       <div class="ssCounter best">★ <span id="startBest">0</span> m</div>
+      <div class="ssCounter" id="runnerChip">🏃 <span id="runnerTag">—</span> <button id="editNameBtn" title="Change name">✎</button></div>
       <div class="ssCounter">◎ <span id="bankPreview">0</span></div>
     </div>
     <div class="title">S.I RUNNERS</div>
@@ -133,6 +171,11 @@
       <button class="ssIcon" id="muteBtn"><span class="ic">🔊</span><span class="lb">SOUND</span></button>
     </div>
     <div id="touchHint">◀ ▶ / A D move &middot; ▲ jump &middot; ▼ slide &middot; swipe on phone</div>
+
+    <div class="ssCompPanel">
+      <div class="ssPanelTitle">🏆 COMPETITION</div>
+      <div id="compList"></div>
+    </div>
   </div>
 
   <!-- Shop -->
@@ -168,13 +211,18 @@
     <div class="stat">Score: <b id="finalScore">0</b></div>
     <div class="stat">Coins this run: <b id="finalCoins">0</b></div>
     <div class="stat">Best: <b id="bestScore">0</b></div>
+    <div id="overRank"></div>
+    <div class="overComp">
+      <div class="ssPanelTitle" style="text-align:center">🏆 COMPETITION</div>
+      <div id="overCompList"></div>
+    </div>
     <div class="row">
       <button class="btn" id="retryBtn">RUN AGAIN</button>
       <button class="btn ghost" id="overShopBtn">SHOP</button>
     </div>
   </div>
 
-  <div id="version">v5.4</div>
+  <div id="version">v5.6</div>
   <div id="credit">Created by Sean MC</div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -250,7 +298,7 @@
     ];
 
     // ---------- Save data (localStorage) ----------
-    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [] };
+    var save = { bank: 0, owned: ["onyx", "vex"], selected: "onyx", best: 0, boosts: [], name: "" };
     function loadSave() {
       try {
         var raw = localStorage.getItem("siRunners3D");
@@ -261,6 +309,7 @@
           save.selected = d.selected || "vex";
           save.best = d.best || 0;
           save.boosts = d.boosts || [];
+          save.name = (d.name || "").toString().slice(0, 14);
           if (save.owned.indexOf("vex") < 0) save.owned.push("vex");
         }
       } catch (e) { /* storage blocked — play without saving */ }
@@ -273,6 +322,88 @@
     function charById(id) {
       for (var i = 0; i < CHARACTERS.length; i++) if (CHARACTERS[i].id === id) return CHARACTERS[i];
       return CHARACTERS[0];
+    }
+
+    /* ============================================================
+       COMPETITION LEADERBOARD
+       ------------------------------------------------------------
+       Stores each runner's BEST score. Right now it is per-device
+       (localStorage), so each player sees their own runs.
+       To make it GLOBAL — every player's name and best score shown
+       to everyone — only these two functions need to change:
+         lbFetch(cb)        -> read all {name,score} from the server
+         lbPush(name,score) -> send one best score to the server
+       Swap the localStorage bodies for a fetch() to a free store
+       (e.g. a Firebase Realtime Database). Nothing else changes.
+       ============================================================ */
+    var LB_KEY = "siRunners3D_lb";
+    var lbCache = [];
+    function lbLoad() {
+      try { var r = localStorage.getItem(LB_KEY); lbCache = r ? JSON.parse(r) : []; }
+      catch (e) { lbCache = []; }
+      if (!Array.isArray(lbCache)) lbCache = [];
+      return lbCache;
+    }
+    function lbFetch(cb) { cb(lbLoad()); }                 // <-- global swap point (read)
+    function lbPush(name, score) {                          // <-- global swap point (write)
+      var list = lbLoad(), found = false;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].name.toLowerCase() === name.toLowerCase()) {
+          if (score > list[i].score) list[i].score = score;
+          found = true; break;
+        }
+      }
+      if (!found) list.push({ name: name, score: score });
+      list.sort(function (a, b) { return b.score - a.score; });
+      list = list.slice(0, 50);
+      try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch (e) {}
+      lbCache = list;
+    }
+    function lbRank(name) {
+      var list = lbCache, n = name.toLowerCase();
+      for (var i = 0; i < list.length; i++) if (list[i].name.toLowerCase() === n) return i + 1;
+      return 0;
+    }
+    function escName(s) { return String(s).replace(/[<>&]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]; }); }
+    function renderComp(targetId, limit) {
+      var el = $(targetId); if (!el) return;
+      lbFetch(function (list) {
+        if (!list.length) { el.innerHTML = '<div class="compEmpty">No runs yet. Be the first!</div>'; return; }
+        var top = list.slice(0, limit || 5), me = (save.name || "").toLowerCase(), html = "";
+        for (var i = 0; i < top.length; i++) {
+          var row = top[i], mine = row.name.toLowerCase() === me;
+          html += '<div class="compRow' + (mine ? ' me' : '') + '">' +
+            '<span class="compRank">' + (i + 1) + '</span>' +
+            '<span class="compName">' + escName(row.name) + '</span>' +
+            '<span class="compScore">' + row.score + '</span></div>';
+        }
+        el.innerHTML = html;
+      });
+    }
+
+    /* ---------- Name gate (must enter a name before playing) ---------- */
+    function hasName() { return !!(save.name && save.name.trim()); }
+    function showNameGate() {
+      var ip = $("nameInput"); if (ip) ip.value = save.name || "";
+      $("nameScreen").classList.remove("hidden");
+      $("startScreen").classList.add("hidden");
+      $("overScreen").classList.add("hidden");
+      if (ip) setTimeout(function () { ip.focus(); }, 60);
+    }
+    function saveNameFromInput() {
+      var ip = $("nameInput"); if (!ip) return;
+      var v = ip.value.replace(/\s+/g, " ").trim().slice(0, 14);
+      var err = $("nameErr");
+      if (v.length < 2) { if (err) err.style.display = "block"; ip.focus(); return; }
+      if (err) err.style.display = "none";
+      save.name = v; writeSave();
+      refreshNameLabels();
+      $("nameScreen").classList.add("hidden");
+      $("startScreen").classList.remove("hidden");
+      renderComp("compList", 5);
+    }
+    function refreshNameLabels() {
+      var rt = $("runnerTag"); if (rt) rt.textContent = save.name || "—";
     }
 
     // ---------- Config ----------
@@ -346,6 +477,9 @@
       loadRobot();                                // real model swaps in when ready
       bindControls();
       refreshBankLabels();
+      refreshNameLabels();
+      renderComp("compList", 5);
+      if (!hasName()) showNameGate();
 
       clock = new THREE.Clock();
       animate();
@@ -1169,6 +1303,9 @@
 
       $("startBtn").addEventListener("click", startGame);
       $("retryBtn").addEventListener("click", startGame);
+      var nsb = $("nameSaveBtn"); if (nsb) nsb.addEventListener("click", saveNameFromInput);
+      var ni = $("nameInput"); if (ni) ni.addEventListener("keydown", function (e) { if (e.key === "Enter") saveNameFromInput(); });
+      var en = $("editNameBtn"); if (en) en.addEventListener("click", showNameGate);
       $("shopBtn").addEventListener("click", openShop);
       $("overShopBtn").addEventListener("click", openShop);
       $("shopBackBtn").addEventListener("click", closeShop);
@@ -1373,6 +1510,7 @@
 
     // ---------- Flow ----------
     function startGame() {
+      if (!hasName()) { showNameGate(); return; }
       lane = 1; targetX = 0; vy = 0; grounded = true;
       sliding = false; slideT = 0;
       speed = BASE_SPEED; distance = 0; coinCount = 0; score = 0;
@@ -1422,10 +1560,15 @@
       save.bank += coinCount;
       if (score > save.best) save.best = score;
       writeSave();
+      if (hasName()) lbPush(save.name, save.best);
       setShieldBubble(false);
       $("finalScore").textContent = score;
       $("finalCoins").textContent = coinCount;
       $("bestScore").textContent = save.best;
+      var rk = lbRank(save.name);
+      var rl = $("overRank");
+      if (rl) rl.textContent = rk ? ("You are #" + rk + " in the competition") : "";
+      renderComp("overCompList", 5);
       refreshBankLabels();
       $("hud").classList.add("hidden");
       $("overScreen").classList.remove("hidden");
@@ -1585,15 +1728,16 @@
   </script>
 <script>
 /* ============================================================
-   PHONK SOUNDTRACK  (original, synthesized via Web Audio API)
-   Added for S.I Runners. Fully self-contained and additive —
-   does not touch any existing game code.
-   Toggle: the on-screen button (bottom-left) or the "M" key.
+   BRAZILIAN PHONK SOUNDTRACK  (original, synthesized, Web Audio)
+   A montagem-style funk/phonk groove: 3-3-2 gallop kick, deep
+   distorted melodic 808, funk clap on the backbeat, rolling hats,
+   an apito (whistle) lead and chopped "bruxaria" vocals.
+   Fully self-contained and additive. Toggle: button or "M" key.
    ============================================================ */
 (function () {
   var actx = null, master = null, comp = null, on = true, started = false;
   var step = 0, bar = 0, nextT = 0, timer = null, btn = null;
-  var BPM = 156, STEPS = 8, stepDur = 60 / BPM / 2;
+  var BPM = 130, STEPS = 16, stepDur = 60 / BPM / 4;   // 16th-note grid
 
   function distCurve(k){ var n=2048,c=new Float32Array(n); for(var i=0;i<n;i++){var x=i*2/n-1; c[i]=(3+k)*x*20*Math.PI/180/(Math.PI+k*Math.abs(x));} return c; }
   var DIST=null;
@@ -1614,31 +1758,53 @@
     formants.forEach(function(ff,i){ var bp=actx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=ff; bp.Q.value=9; var fg=actx.createGain(); fg.gain.value=[1,0.7,0.4][i]||0.3; src.connect(bp); bp.connect(fg); fg.connect(out); });
     out.connect(master); src.start(t); src.stop(t+dur+0.05);
   }
+  // funk clap (the baile-funk handclap on the backbeat) — 3 quick noise bursts
+  function clap(t){ for(var k=0;k<3;k++){ var s=actx.createBufferSource(); s.buffer=noiseBuf(0.06); var f=actx.createBiquadFilter(); f.type="bandpass"; f.frequency.value=1700; f.Q.value=1.1; var g=actx.createGain(); env(g,t+k*0.012,0.001,0.06,0.42); s.connect(f); f.connect(g); g.connect(master); s.start(t+k*0.012); } }
+  // apito (the bright Brazilian funk whistle lead) with a little vibrato
+  function whistle(t,freq,dur){ if(!freq)return; var o=actx.createOscillator(),g=actx.createGain(); o.type="sine"; o.frequency.setValueAtTime(freq,t); o.frequency.linearRampToValueAtTime(freq*1.03,t+dur*0.5); o.frequency.linearRampToValueAtTime(freq,t+dur); var lfo=actx.createOscillator(),lg=actx.createGain(); lfo.type="sine"; lfo.frequency.value=6.5; lg.gain.value=freq*0.013; lfo.connect(lg); lg.connect(o.frequency); env(g,t,0.012,dur,0.15); o.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t+dur+0.05); lfo.stop(t+dur+0.05); }
 
-  // 4-bar dark progression in A minor (808 roots) + cowbell melody
-  var ROOTS=[55.00,43.65,65.41,49.00]; // A1 F1 C2 G1  (i - VI - III - VII)
-  var A3=220,C4=261.63,D4=293.66,E4=329.63,G4=392.00,A4=440,C5=523.25,E5=659.25;
-  var MEL=[
-    [A4,A4,0,C5,A4,0,E4,G4],
-    [A4,0,G4,A4,0,C5,0,E4],
-    [C5,0,A4,C5,A4,0,G4,E4],
-    [E4,0,D4,E4,G4,0,A4,C5]
+  // ---- Brazilian phonk montagem: 4-bar loop, 16th-note grid ----
+  // The bass (808) MOVES through a low melody — that moving boom line
+  // is the "montagem" signature of Brazilian funk/phonk.
+  var BASS = [
+    // step:  0    1 2 3 4 5  6     7 8    9 10 11 12 13 14    15
+    [55.00, 0,0,0,0,0, 55.00, 0, 49.00, 0,0,0,0,0, 65.41, 0],   // A1 A1 G1 C2
+    [55.00, 0,0,0,0,0, 65.41, 0, 73.42, 0,0,0,0,0, 65.41, 0],   // A1 C2 D2 C2
+    [43.65, 0,0,0,0,0, 43.65, 0, 49.00, 0,0,0,0,0, 55.00, 0],   // F1 F1 G1 A1
+    [49.00, 0,0,0,0,0, 55.00, 0, 65.41, 0,0,0,0,0, 82.41, 0]    // G1 A1 C2 E2
   ];
-  var KICK=[1,0,1,1,0,1,1,0], SNARE=[0,0,0,0,1,0,0,1], HAT=[1,1,1,1,1,1,1,1];
+  // apito (whistle) lead — bright, sparse, sits on top
+  var A4=440,B4=493.88,C5=523.25,D5=587.33,E5=659.25,G5=783.99,A5=880;
+  var WMEL = [
+    [A5,0,0,0,0,0, E5,0, 0,0, G5,0, 0,0,0,0],
+    [G5,0,0,0,0,0, D5,0, 0,0, E5,0, 0,0,0,0],
+    [C5,0,0,0,0,0, E5,0, 0,0, G5,0, 0,0,0,0],
+    [0,0, D5,0, E5,0, 0,0, G5,0, 0,0, A5,0, E5,0]
+  ];
+  //              0123456789012345
+  var P_KICK  = "x..x..x.x..x..x.";   // 3-3-2 montagem gallop
+  var P_CLAP  = "....x.......x...";   // funk clap on the backbeat
+  var P_HAT   = "t.t.t.tTt.t.t.tT";   // 8th hats, opens on the offbeat
 
-  var BEAT = ("bo botbobobotttbobotbobobobotbobottttbobotbotbotbotbotbotbotbotbotbotbotbotibbooooboboboboboboboboboboboboobboboob-boobobboobobobbotttttttt obot").replace(/[\s-]+/g,"");
   function schedule(){
     var ahead=0.2;
     while(nextT < actx.currentTime + ahead){
       var i=step%STEPS, b=bar%4;
-      var c=BEAT.charAt(step % BEAT.length);          // b=kick, o=kick+808 boom, t=hi-hat, i=snare
-      if(c==="b"){ kick(nextT); }
-      else if(c==="o"){ kick(nextT); bass808(nextT, ROOTS[b], stepDur*2); }
-      else if(c==="t"){ hat(nextT, (step%2)===1); }
-      else if(c==="i"){ snare(nextT); }
-      bell(nextT, MEL[b][i]);
-      if(i===2) voxChop(nextT, VOWELS[b%4], ROOTS[b]*3.2, stepDur*1.7);
-      if(i===6) voxChop(nextT, VOWELS[(b+2)%4], ROOTS[b]*2.4, stepDur*1.5);
+      // kick gallop
+      if(P_KICK.charAt(i)==="x") kick(nextT);
+      // moving 808 bass (the montagem line)
+      var bf=BASS[b][i]; if(bf){ bass808(nextT, bf, stepDur*3.2); bell(nextT, bf*4); }
+      // funk clap
+      if(P_CLAP.charAt(i)==="x") clap(nextT);
+      // hats
+      var h=P_HAT.charAt(i); if(h==="t") hat(nextT,false); else if(h==="T") hat(nextT,true);
+      // turnaround hat roll into each new 4-bar phrase
+      if(i===15 && (bar%2===1)){ hat(nextT+stepDur*0.33,false); hat(nextT+stepDur*0.66,false); }
+      // apito whistle lead
+      whistle(nextT, WMEL[b][i], stepDur*2.4);
+      // chopped bruxaria vocals
+      if(i===4)  voxChop(nextT, VOWELS[b%4], (BASS[b][0]||55)*3.2, stepDur*2.0);
+      if(i===12) voxChop(nextT, VOWELS[(b+2)%4], (BASS[b][8]||55)*2.6, stepDur*1.8);
       nextT += stepDur; step++;
       if(i===STEPS-1) bar++;
     }
